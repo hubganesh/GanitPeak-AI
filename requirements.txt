@@ -1,0 +1,12 @@
+google-generativeai
+Pillow
+Flask
+Flask-CORS
+Flask-SQLAlchemy
+Flask-Limiter
+PyMuPDF
+google-genai
+python-dotenv
+gTTS
+sympy
+PyJWT

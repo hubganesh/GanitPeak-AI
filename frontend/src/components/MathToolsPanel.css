@@ -1,0 +1,183 @@
+.math-tools-panel {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+}
+
+.math-tools-panel h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 1.4rem;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+    text-align: center;
+}
+
+
+/* Symbol Preview Display */
+
+.symbol-preview {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.symbol-preview-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    min-width: 120px;
+}
+
+.symbol-large {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.symbol-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.symbols-container {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-top: 10px;
+}
+
+.symbols-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.symbols-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.symbols-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.symbols-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.symbol-category {
+    margin-bottom: 20px;
+}
+
+.symbol-category h4 {
+    color: #444;
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.symbols-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
+}
+
+.symbol-button {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    color: #495057;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.symbol-button:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd;
+}
+
+.symbol-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.symbol-button.selected {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #5a67d8;
+    transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+
+/* Responsive design */
+
+@media (max-width: 768px) {
+    .math-tools-panel {
+        padding: 15px;
+    }
+    .symbols-container {
+        max-height: 250px;
+    }
+    .symbols-grid {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 6px;
+    }
+    .symbol-button {
+        padding: 8px 4px;
+        font-size: 1rem;
+    }
+    .symbol-preview {
+        top: 15px;
+        right: 15px;
+    }
+    .symbol-preview-content {
+        padding: 10px;
+        min-width: 100px;
+    }
+    .symbol-large {
+        font-size: 2rem;
+    }
+    .symbol-label {
+        font-size: 0.8rem;
+    }
+}
