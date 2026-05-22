@@ -11,9 +11,9 @@ MathVerse is an expert math tutor powered by Google Gemini API. It can solve mat
 - Basic OCR support for image inputs (equations/photos)
 - Friendly, educational responses like a human math teacher
 - ChatGPT-like web interface
-- Video generation for math problem explanations
+- Video generation for math problem explanations (Under Development)
 - Quiz generation
-- User authentication and history
+- User authentication and history via Supabase
 
 ## Setup
 
@@ -26,22 +26,21 @@ MathVerse is an expert math tutor powered by Google Gemini API. It can solve mat
    - Windows: Download from [https://github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
    - Ensure `tesseract.exe` is in your PATH.
 
-3. Set up PostgreSQL database:
-   - Install PostgreSQL if not already installed.
-   - Create a database named `math_pro_db` (or update `DB_NAME` in .env accordingly).
+3. Set up Supabase:
+   - Create a project on [Supabase](https://supabase.com/).
+   - Set up the database tables (`chat_history` and `quiz_history`) to store interactions and scores.
 
 4. Get API keys:
    - Google Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+   - OpenRouter API key from [OpenRouter](https://openrouter.ai/) (used for quiz generation).
 
 5. Create a `.env` file in the root directory with the following variables (copy from `.env.example`):
    ```
+   SUPABASE_URL=your_supabase_project_url_here
+   SUPABASE_KEY=your_supabase_anon_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
-   DB_USER=postgres
-   DB_PASSWORD=your_db_password
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=math_pro_db
-   JWT_SECRET=your_jwt_secret_here
+   OPENROUTER_API_KEY=your_openrouter_api_key_here
+   FLASK_DEBUG=True
    ```
 
 6. Install Node.js if not already installed.
@@ -77,5 +76,4 @@ Type a math question like "Solve for x: 2x + 3 = 7" and get a step-by-step solut
 
 - For image inputs, ensure the image is clear for accurate OCR.
 - The AI verifies solutions with reasoning and never guesses.
-- Video generation requires Manim and FFmpeg installed.
-- Change `JWT_SECRET` in production for security.
+- Video generation is currently under development; future support will require Manim and FFmpeg.
