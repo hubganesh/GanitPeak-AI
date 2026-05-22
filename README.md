@@ -22,7 +22,7 @@ MathVerse is an expert math tutor powered by Google Gemini API. It can solve mat
    pip install -r requirements.txt
    ```
 
-2. For image OCR support, install Tesseract OCR on your system:
+2. For image OCR support (local CLI script `main.py` only), install Tesseract OCR on your system and run `pip install pytesseract`:
    - Windows: Download from [https://github.com/UB-Mannheim/tesseract/wiki](https://github.com/UB-Mannheim/tesseract/wiki)
    - Ensure `tesseract.exe` is in your PATH.
 
@@ -71,6 +71,27 @@ MathVerse is an expert math tutor powered by Google Gemini API. It can solve mat
 ## Example
 
 Type a math question like "Solve for x: 2x + 3 = 7" and get a step-by-step solution.
+
+## Deployment & Connection (Vercel + Render)
+
+If you are hosting your frontend on Vercel and your backend on Render, they connect over the internet using URLs:
+
+- **Render (Backend)**: Provides a public URL (e.g., `https://your-app.onrender.com`). This runs your database connection and Python/Flask logic.
+- **Vercel (Frontend)**: Provides a public URL (e.g., `https://your-app.vercel.app`). This displays your user interface.
+
+### How They Talk to Each Other
+
+1. **Configure Frontend to point to Backend**:
+   In your Vercel deployment settings, add the `REACT_APP_API_URL` environment variable:
+   - **Key**: `REACT_APP_API_URL`
+   - **Value**: `https://your-app.onrender.com` (your deployed Render backend URL)
+
+   *(Note: This is automatically loaded by the frontend in [apiConfig.js](file:///c:/Users/Ganesh/Desktop/MathVerse-AI-Math-Agent/MathVerse-AI-Math-Agent-main/MathVerse-AI-Math-Agent-main/frontend/src/apiConfig.js))*
+
+2. **Configure Backend to allow Frontend (CORS)**:
+   In your Render deployment settings, configure the allowed CORS origins using the `ALLOWED_ORIGINS` environment variable:
+   - **Key**: `ALLOWED_ORIGINS`
+   - **Value**: `https://your-app.vercel.app` (your deployed Vercel frontend URL)
 
 ## Note
 

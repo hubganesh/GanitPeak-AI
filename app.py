@@ -10,7 +10,6 @@ import base64
 import os
 from datetime import datetime, timedelta
 import uuid
-import jwt
 import hashlib
 import re
 
