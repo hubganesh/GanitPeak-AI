@@ -79,6 +79,13 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     return response
 
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "MathVerse AI Math Agent API is running successfully!"
+    }), 200
+
 load_dotenv()  # Load environment variables from .env file
 
 # Supabase Configuration
