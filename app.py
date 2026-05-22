@@ -60,7 +60,7 @@ limiter = Limiter(
 )
 
 # Configure CORS for production - restrict to specific domains
-allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+allowed_origins = os.getenv('ALLOWED_ORIGINS', 'math-verse-math-agent-6e8.vercel.app').split(',')
 CORS(app, resources={r"/*": {"origins": allowed_origins}})
 
 @app.before_request
