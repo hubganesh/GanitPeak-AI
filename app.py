@@ -50,6 +50,8 @@ def sanitize_input(input_string, max_length=1000):
     # Limit length
     return sanitized[:max_length].strip()
 
+load_dotenv()  # Load environment variables first
+
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='/')
 
 # Configure rate limiting
@@ -59,9 +61,13 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
-# Configure CORS for production - restrict to specific domains
-allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
-CORS(app, resources={r"/*": {"origins": allowed_origins}})
+# Configure CORS - allow all origins if ALLOWED_ORIGINS not set (e.g. on Vercel)
+allowed_origins_env = os.getenv('ALLOWED_ORIGINS', '')
+if allowed_origins_env:
+    allowed_origins = allowed_origins_env.split(',')
+else:
+    allowed_origins = '*'
+CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
 @app.before_request
 def log_request_info():
@@ -85,7 +91,7 @@ def home():
         "message": "MathVerse AI Math Agent API is running successfully!"
     }), 200
 
-load_dotenv()  # Load environment variables from .env file
+# (load_dotenv already called above before Flask app init)
 
 # Supabase Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL')
