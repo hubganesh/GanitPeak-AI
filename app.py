@@ -63,16 +63,10 @@ limiter = Limiter(
 
 
 # Configure CORS - allow all origins if ALLOWED_ORIGINS not set (e.g. on Vercel)
-allowed_origins_env = os.getenv('ALLOWED_ORIGINS', '')
-if allowed_origins_env:
-    allowed_origins = allowed_origins_env.split(',')
-else:
-    allowed_origins = '*'
+# Combined CORS setup (Allows local development, specific Vercel URL, or wildcards safely)
+allowed_origins_env = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,https://math-verse-math-agent-6e8.vercel.app')
+allowed_origins = allowed_origins_env.split(',')
 CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
-
-# Configure CORS for production - restrict to specific domains
-allowed_origins = os.getenv('ALLOWED_ORIGINS', 'https://math-verse-math-agent-6e8.vercel.app').split(',')
-CORS(app, resources={r"/*": {"origins": allowed_origins}})
 
 @app.before_request
 def log_request_info():
