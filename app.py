@@ -61,6 +61,7 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
+<<<<<<< HEAD
 # Configure CORS - allow all origins if ALLOWED_ORIGINS not set (e.g. on Vercel)
 allowed_origins_env = os.getenv('ALLOWED_ORIGINS', '')
 if allowed_origins_env:
@@ -68,6 +69,11 @@ if allowed_origins_env:
 else:
     allowed_origins = '*'
 CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
+=======
+# Configure CORS for production - restrict to specific domains
+allowed_origins = os.getenv('ALLOWED_ORIGINS', 'https://math-verse-math-agent-6e8.vercel.app').split(',')
+CORS(app, resources={r"/*": {"origins": allowed_origins}})
+>>>>>>> cd6ce8dfd3ec8df6fff1fb34f0898c8004b8fa62
 
 @app.before_request
 def log_request_info():
@@ -81,7 +87,14 @@ def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    
+    # FIXED: Added connect-src to allow connections to Supabase, Gemini, and OpenRouter
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://openrouter.ai;"
+    )
     return response
 
 @app.route('/')
