@@ -24,7 +24,7 @@ import {
   Trophy,
   RefreshCcw,
   ArrowRight,
-  Eye
+  Eye // eslint-disable-line no-unused-vars
 } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import './QuizGenerator.css';
@@ -38,13 +38,6 @@ const Quiz = () => {
     { id: 'Accounting', label: t('accounting'), icon: <Layers size={18} /> }
   ];
 
-  const sampleQuestions = {
-    Mathematics: [
-      { text: "What is the derivative of $x^2$?", options: ["$x$", "$2x$", "$x^2$", "$2$"], correct_answer: "$2x$", concept: "Derivatives", explanation: "The derivative of $x^n$ is $nx^{n-1}$, so for $x^2$, it's $2x$.", hint: "Power rule: derivative of $x^n$ is $nx^{n-1}$" },
-      { text: "What is $\\int x \\ dx$?", options: ["$\\frac{x^2}{2} + C$", "$x^2 + C$", "$2x + C$", "$\\frac{1}{x} + C$"], correct_answer: "$\\frac{x^2}{2} + C$", concept: "Integration", explanation: "The integral of $x$ is $\\frac{x^2}{2} + C$.", hint: "Power rule for integration: $\\int x^n dx = \\frac{x^{n+1}}{n+1} + C$" },
-      { text: "Solve for x: $2x + 3 = 7$", options: ["x = 1", "x = 2", "x = 3", "x = 4"], correct_answer: "x = 2", concept: "Linear Equations", explanation: "Subtract 3 from both sides: $2x = 4$, then divide by 2: $x = 2$.", hint: "Isolate the variable x." }
-    ]
-  };
 
   // State
   const [subject, setSubject] = useState('Mathematics');
@@ -64,9 +57,11 @@ const Quiz = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  // eslint-disable-next-line no-unused-vars
   const [wrongCount, setWrongCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
   const [timerActive, setTimerActive] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [showHint, setShowHint] = useState(false);
 
   // Difficulty Mapping
@@ -259,6 +254,7 @@ const Quiz = () => {
   // Rendering Quiz View
   if (quizData && !quizCompleted) {
     const question = quizData.questions[currentQuestion];
+    // eslint-disable-next-line no-unused-vars
     const isCorrect = showFeedback && question.correct_answer.toLowerCase() === userAnswers[currentQuestion].toLowerCase();
 
     return (
