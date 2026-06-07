@@ -54,6 +54,23 @@ load_dotenv()  # Load environment variables first
 
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='/')
 
+class PrefixMiddleware(object):
+    def __init__(self, wsgi_app, prefix=''):
+        self.wsgi_app = wsgi_app
+        self.prefix = prefix
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        if path.startswith(self.prefix):
+            new_path = path[len(self.prefix):]
+            if not new_path.startswith('/'):
+                new_path = '/' + new_path
+            environ['PATH_INFO'] = new_path
+            environ['SCRIPT_NAME'] = self.prefix
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix='/api')
+
 # Configure rate limiting
 limiter = Limiter(
     app=app,
@@ -64,8 +81,15 @@ limiter = Limiter(
 
 # Configure CORS - allow all origins if ALLOWED_ORIGINS not set (e.g. on Vercel)
 # Combined CORS setup (Allows local development, specific Vercel URL, or wildcards safely)
-allowed_origins_env = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,https://math-verse-math-agent-6e8.vercel.app')
-allowed_origins = allowed_origins_env.split(',')
+allowed_origins_env = os.getenv('ALLOWED_ORIGINS', '').strip()
+if not allowed_origins_env:
+    allowed_origins = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://math-verse-math-agent-6e8.vercel.app'
+    ]
+else:
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(',') if origin.strip()]
 CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
 
 @app.before_request
@@ -314,15 +338,18 @@ def voice_math():
     try:
         result = voice_math_processing(transcript, language)
         
-        # Save to chat history if successful
-        if 'error' not in result:
-            chat_data = {
-                "user_id": user_id,
-                "question": f"Voice: {transcript}",
-                "answer": result.get('normalizedExpression', ''),
-                "image_data": None
-            }
-            supabase.table("chat_history").insert(chat_data).execute()
+        # Save to chat history if successful and user is authenticated
+        if 'error' not in result and user_id:
+            try:
+                chat_data = {
+                    "user_id": user_id,
+                    "question": f"Voice: {transcript}",
+                    "answer": result.get('normalizedExpression', ''),
+                    "image_data": None
+                }
+                supabase.table("chat_history").insert(chat_data).execute()
+            except Exception as db_err:
+                print(f"Failed to save voice chat to database: {db_err}")
         
         return jsonify(result)
     except Exception as e:
@@ -421,15 +448,20 @@ def solve():
     try:
         answer = solve_math_question(question=question, image=image, subject=subject, language=language)
         
-        # Save to Supabase
-        chat_data = {
-            "user_id": user_id,
-            "question": question or 'Image question',
-            "answer": answer,
-            "image_data": image_data
-        }
-        response = supabase.table("chat_history").insert(chat_data).execute()
-        chat_id = response.data[0]['id'] if response.data else None
+        # Save to Supabase if authenticated
+        chat_id = None
+        if user_id:
+            try:
+                chat_data = {
+                    "user_id": user_id,
+                    "question": question or 'Image question',
+                    "answer": answer,
+                    "image_data": image_data
+                }
+                response = supabase.table("chat_history").insert(chat_data).execute()
+                chat_id = response.data[0]['id'] if response.data else None
+            except Exception as db_err:
+                print(f"Failed to save chat to database: {db_err}")
         
         return jsonify({'answer': answer, 'chat_id': chat_id})
     except Exception as e:
@@ -497,6 +529,9 @@ def save_quiz_history():
         user = get_supabase_user(request)
         user_id = user.id if user else None
         
+        if not user_id:
+            return jsonify({'message': 'Quiz history not saved (anonymous user)'}), 200
+
         response = supabase.table("quiz_history").insert({
             "user_id": user_id,
             "subject": data['subject'],

@@ -25,9 +25,14 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        onLogin(data.user);
+        const userData = {
+          id: data.user_id,
+          name: data.name,
+          email: data.email,
+        };
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        onLogin(userData);
       } else {
         setError(data.error || 'Login failed');
       }

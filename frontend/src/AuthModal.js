@@ -55,7 +55,7 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
             email: result.email,
           };
           localStorage.setItem('user', JSON.stringify(userData));
-          localStorage.setItem('token', result.token);
+          localStorage.setItem('token', result.access_token);
 
           // Close modal and start chat with user data
           onClose();
