@@ -1054,63 +1054,65 @@
   }
 
   .input-area {
-    padding: 0.4rem 0.5rem;
-    gap: 0.4rem;
+    display: flex;
+    flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
+    padding: 0.4rem 0.5rem;
+    gap: 0.4rem;
     width: 100%;
-    overflow: hidden;
+    box-sizing: border-box;
+    overflow: visible;
   }
 
-  /* Tools button — same circle size as send button */
+  /* Tools button — exact same circle as send button */
   .dropdown-buttons {
-    flex-direction: row;
-    gap: 0;
     flex-shrink: 0;
   }
 
   .dropdown-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    padding: 0;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
     transform: none !important;
+    overflow: visible !important;
   }
 
-  /* Hide text labels and arrow, keep only the SVG icon */
   .btn-text,
   .dropdown-arrow {
-    display: none;
+    display: none !important;
   }
 
   .btn-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
   }
 
-  /* Tools dropdown — use fixed positioning so it always appears above everything */
+  /* Tools dropdown — always renders above the input bar */
   .tools-dropdown-menu {
-    position: fixed;
-    bottom: 80px;
-    left: 12px;
-    right: auto;
-    min-width: 180px;
-    z-index: 9999;
+    position: fixed !important;
+    bottom: 72px !important;
+    left: 8px !important;
+    right: auto !important;
+    min-width: 180px !important;
+    z-index: 9999 !important;
+    top: auto !important;
   }
 
-  /* MathInput fills remaining space */
+  /* MathInput — fills all remaining space between the two buttons */
   .math-input-container {
-    flex: 1;
-    min-width: 0;
-    max-width: none;
-    margin: 0;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: auto !important;
+    margin: 0 !important;
   }
 
   .drag-drop-area {
@@ -1123,10 +1125,10 @@
 
   /* Send button — fixed circle */
   .send-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    min-height: 36px;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     flex-shrink: 0;
   }
 
@@ -1158,21 +1160,21 @@
   }
 
   .input-area {
-    padding: 0.35rem 0.4rem;
+    padding: 0.3rem 0.35rem;
     gap: 0.3rem;
   }
 
   .dropdown-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
   }
 
   .send-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    min-height: 32px;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
   }
 }
 
