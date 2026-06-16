@@ -133,25 +133,37 @@
 @media (max-width: 768px) {
   .math-input-container {
     max-width: 100%;
+    flex: 1;
+    min-width: 0; /* allow shrinking inside flex parent */
   }
 
-  /* Keep the wrapper in a single row — don't stack on mobile */
   .math-input-wrapper {
     flex-direction: row;
     border-radius: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .input-with-mic {
+    flex: 1;
+    min-width: 0;
   }
 
   .math-input-field {
     border-radius: 10px 0 0 10px;
-    padding: 12px 14px;
-    font-size: 15px;
+    padding: 10px 10px 10px 12px;
+    font-size: 14px;
+    min-width: 0;
+    width: 100%;
   }
 
+  /* Hide the "Math Input ▼" text, show just the icon-like short label */
   .math-input-dropdown-btn {
     border-radius: 0 10px 10px 0;
-    padding: 12px 10px;
-    font-size: 12px;
-    min-width: 70px;
+    padding: 10px 8px;
+    font-size: 11px;
+    min-width: 52px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .math-symbols-dropdown {
@@ -159,6 +171,14 @@
     max-height: min(280px, 45vh);
     left: 0;
     right: 0;
+    /* Make it scroll within the visible area */
+    position: fixed;
+    bottom: 80px; /* above the input bar */
+    left: 0;
+    right: 0;
+    margin: 0 0.5rem;
+    z-index: 3000;
+    border-radius: 12px;
   }
 
   .math-symbols-grid {
@@ -175,9 +195,14 @@
 
 @media (max-width: 390px) {
   .math-input-dropdown-btn {
-    min-width: 56px;
-    font-size: 11px;
-    padding: 10px 6px;
+    min-width: 44px;
+    font-size: 10px;
+    padding: 10px 5px;
+  }
+
+  .math-input-field {
+    padding: 10px 8px;
+    font-size: 13px;
   }
 }
 

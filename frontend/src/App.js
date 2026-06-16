@@ -417,14 +417,6 @@ function App() {
           )}
 
           <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
-            <div className="sidebar-header">
-              <button className="back-arrow" onClick={() => setShowLandingPage(true)}><ChevronLeft size={20} /></button>
-              <button className="edit-icon" onClick={() => {
-                startNewChat();
-                if (window.innerWidth <= 768) setSidebarCollapsed(true);
-              }} title="New Chat"><Plus size={20} /></button>
-            </div>
-            
             <div className="sidebar-menu">
               <div 
                 className={`menu-item ${selectedMenuItem === 'home' ? 'selected' : ''}`}
