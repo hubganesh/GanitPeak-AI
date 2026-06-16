@@ -245,67 +245,88 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .canvas-modal-content {
-    width: 95%;
-    max-height: 95vh;
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .canvas-modal-overlay {
+    align-items: flex-start;
+    padding: 0;
   }
 
   .canvas-modal-header {
-    padding: 1rem 1.5rem;
+    padding: 0.875rem 1rem;
+    flex-shrink: 0;
   }
 
   .canvas-modal-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 
   .canvas-close-btn {
-    width: 35px;
-    height: 35px;
-    font-size: 1.5rem;
+    width: 34px;
+    height: 34px;
+    font-size: 1.4rem;
   }
 
   .canvas-toolbar {
-    padding: 1rem;
-    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
   }
 
   .canvas-tool-btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.82rem;
     flex: 1;
-    min-width: 100px;
+    min-width: 0;
+    justify-content: center;
+    border-radius: 10px;
+  }
+
+  /* Canvas fills all remaining height */
+  .canvas-wrapper {
+    flex: 1;
+    padding: 0.5rem;
+    max-height: none;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
     justify-content: center;
   }
 
-  .canvas-wrapper {
-    padding: 1rem;
-    max-height: 50vh;
-  }
-
   .drawing-canvas {
+    width: 100% !important;
+    height: 100% !important;
     max-width: 100%;
-    height: auto;
+    border-radius: 10px;
+    touch-action: none;
   }
 
   .analyzing-spinner {
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
   }
 
   .analyzing-content p {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 }
 
 @media (max-width: 480px) {
   .canvas-toolbar {
-    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.5rem;
   }
 
   .canvas-tool-btn {
-    width: 100%;
-  }
-
-  .canvas-modal-title {
-    font-size: 1rem;
+    padding: 0.45rem 0.4rem;
+    font-size: 0.76rem;
   }
 }

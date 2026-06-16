@@ -11,10 +11,14 @@ const CanvasDrawing = ({ isOpen, onClose, onDone }) => {
     if (isOpen && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      
-      // Set canvas size
-      canvas.width = 800;
-      canvas.height = 500;
+
+      // Use the parent wrapper size on mobile, fallback to 800x500
+      const wrapper = canvas.parentElement;
+      const w = wrapper ? wrapper.clientWidth || 800 : 800;
+      const h = wrapper ? wrapper.clientHeight || 500 : 500;
+
+      canvas.width = w > 0 ? w : 800;
+      canvas.height = h > 0 ? h : 500;
       
       // Fill with white background
       ctx.fillStyle = 'white';
