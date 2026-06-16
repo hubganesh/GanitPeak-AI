@@ -1062,7 +1062,7 @@
     overflow: hidden;
   }
 
-  /* Tools button — icon only, fixed small size */
+  /* Tools button — same circle size as send button */
   .dropdown-buttons {
     flex-direction: row;
     gap: 0;
@@ -1070,24 +1070,39 @@
   }
 
   .dropdown-btn {
-    padding: 0.45rem 0.5rem;
-    font-size: 0;   /* hide text via font-size so icon still shows */
-    min-width: 36px;
+    width: 36px;
     height: 36px;
+    min-width: 36px;
+    padding: 0;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transform: none !important;
   }
 
-  .dropdown-btn .btn-icon {
-    font-size: 16px; /* restore icon size */
-  }
-
-  /* Hide text labels inside dropdown button on mobile */
+  /* Hide text labels and arrow, keep only the SVG icon */
   .btn-text,
   .dropdown-arrow {
     display: none;
+  }
+
+  .btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* Tools dropdown — use fixed positioning so it always appears above everything */
+  .tools-dropdown-menu {
+    position: fixed;
+    bottom: 80px;
+    left: 12px;
+    right: auto;
+    min-width: 180px;
+    z-index: 9999;
   }
 
   /* MathInput fills remaining space */
@@ -1106,13 +1121,20 @@
     font-size: 0.75rem;
   }
 
-  /* Send button — fixed small circle */
+  /* Send button — fixed circle */
   .send-btn {
     width: 36px;
     height: 36px;
     min-width: 36px;
     min-height: 36px;
     flex-shrink: 0;
+  }
+
+  /* Modal overlays full screen on mobile */
+  .modal-content {
+    width: 95vw !important;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }
 
@@ -1141,8 +1163,9 @@
   }
 
   .dropdown-btn {
-    min-width: 32px;
+    width: 32px;
     height: 32px;
+    min-width: 32px;
   }
 
   .send-btn {
