@@ -206,19 +206,29 @@
   }
 }
 
-/* Mobile responsive */
+/* mobile responsive */
 @media (max-width: 768px) {
   .auth-form {
-    padding: 1.5rem;
+    padding: 1.25rem;
   }
 
   .auth-title {
-    font-size: 1.75rem;
-    margin-top: 1.5rem;
+    font-size: 1.6rem;
+    margin-top: 1.25rem;
   }
 
   .auth-modal {
-    margin: 1rem;
-    width: calc(100% - 2rem);
+    margin: 0.75rem;
+    width: calc(100% - 1.5rem);
+    max-height: 95vh;
+  }
+
+  .input-wrapper {
+    height: 44px;
+  }
+
+  .auth-submit-btn {
+    height: 42px;
+    font-size: 0.95rem;
   }
 }

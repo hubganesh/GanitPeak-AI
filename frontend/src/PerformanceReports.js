@@ -278,6 +278,7 @@ const PerformanceReports = () => {
                 <p className="empty-text">{t('noHistoryMsg')}</p>
               </div>
             ) : (
+              <div className="table-scroll-wrapper">
               <table className="report-table">
                 <thead>
                   <tr>
@@ -327,6 +328,7 @@ const PerformanceReports = () => {
                   </AnimatePresence>
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </section>

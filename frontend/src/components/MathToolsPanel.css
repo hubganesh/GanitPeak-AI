@@ -153,31 +153,35 @@
 
 @media (max-width: 768px) {
     .math-tools-panel {
-        padding: 15px;
+        padding: 12px;
+        margin-top: 12px;
     }
     .symbols-container {
-        max-height: 250px;
+        max-height: 220px;
     }
     .symbols-grid {
-        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
-        gap: 6px;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        gap: 5px;
     }
     .symbol-button {
-        padding: 8px 4px;
-        font-size: 1rem;
+        padding: 7px 3px;
+        font-size: 0.95rem;
     }
     .symbol-preview {
-        top: 15px;
-        right: 15px;
+        top: 12px;
+        right: 12px;
     }
     .symbol-preview-content {
-        padding: 10px;
-        min-width: 100px;
+        padding: 8px;
+        min-width: 90px;
     }
     .symbol-large {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
     .symbol-label {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+    }
+    .math-tools-panel h3 {
+        font-size: 1.1rem;
     }
 }

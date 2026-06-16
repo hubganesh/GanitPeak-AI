@@ -188,18 +188,34 @@
 
 @media (max-width: 768px) {
     .calculator {
-        padding: 25px;
+        padding: 1.25rem;
+        border-radius: 16px;
     }
     .button-group {
         flex-direction: column;
+        gap: 10px;
     }
     .btn {
         width: 100%;
+        padding: 12px 20px;
+        font-size: 1rem;
     }
     .examples-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .example-btn {
+        padding: 10px 8px;
+        font-size: 0.875rem;
     }
     .input-field {
-        padding: 15px;
+        padding: 12px 14px;
+        font-size: 1rem;
+    }
+    .input-group label {
+        font-size: 1rem;
+    }
+    .examples-section h3 {
+        font-size: 1rem;
     }
 }

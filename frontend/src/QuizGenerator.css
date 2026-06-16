@@ -24,6 +24,53 @@
   color: var(--quiz-text-main);
 }
 
+@media (max-width: 768px) {
+  .quiz-dashboard-container {
+    margin: 1rem auto;
+    padding: 0 0.875rem;
+  }
+
+  .quiz-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .quiz-header p {
+    font-size: 0.9rem;
+  }
+
+  .quiz-section-card {
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .start-quiz-btn {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .chips-container {
+    gap: 0.375rem;
+  }
+
+  .chip {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .segmented-control {
+    gap: 2px;
+  }
+
+  .segment-item {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
 .quiz-header {
   text-align: center;
   margin-bottom: 2.5rem;
@@ -76,7 +123,7 @@
 
 .quiz-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 1.5rem;
 }
 
