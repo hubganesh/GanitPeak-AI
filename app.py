@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, redirect
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -411,6 +411,72 @@ def login():
             'name': response.user.user_metadata.get('full_name'),
             'email': response.user.email
         }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/auth/google', methods=['GET'])
+@app.route('/api/auth/google', methods=['GET'])
+def auth_google():
+    try:
+        redirect_to = request.args.get('redirect_to')
+        if not redirect_to:
+            redirect_to = request.referrer or request.host_url
+        redirect_to = redirect_to.rstrip('/')
+
+        res = supabase.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {
+                "redirect_to": redirect_to
+            }
+        })
+        if hasattr(res, 'url') and res.url:
+            return redirect(res.url)
+        elif isinstance(res, dict) and 'url' in res:
+            return redirect(res['url'])
+        return jsonify({'error': 'Failed to obtain OAuth redirect URL'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/auth/callback', methods=['GET'])
+@app.route('/api/auth/callback', methods=['GET'])
+def auth_callback():
+    code = request.args.get('code')
+    if not code:
+        return jsonify({'error': 'Missing code parameter'}), 400
+
+    try:
+        response = supabase.auth.exchange_code_for_session({'auth_code': code})
+        user = response.user
+        session = response.session
+        return jsonify({
+            'access_token': session.access_token,
+            'refresh_token': session.refresh_token,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': user.user_metadata.get('full_name') or user.user_metadata.get('name') or user.email.split('@')[0]
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/keep-alive', methods=['GET'])
+@app.route('/keep-alive', methods=['GET'])
+def keep_alive():
+    cron_secret = os.getenv('CRON_SECRET')
+    auth_header = request.headers.get('Authorization')
+
+    # If CRON_SECRET is configured, enforce Bearer authorization
+    if cron_secret and auth_header != f"Bearer {cron_secret}":
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        # Lightweight read-only query to ping Supabase and keep it awake
+        supabase.table('chat_history').select('id').limit(1).execute()
+        return jsonify({'success': True, 'message': 'Supabase ping successful'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

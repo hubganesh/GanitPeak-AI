@@ -90,15 +90,90 @@ function App() {
     }
   };
 
-  // Check for existing user session on mount
+  // Check for existing user session or OAuth redirect callback on mount
   useEffect(() => {
+    // 1. Check for PKCE Authorization Code (?code=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const authCode = urlParams.get('code');
+
+    if (authCode) {
+      fetch(`${API_BASE_URL}/auth/callback?code=${authCode}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Code exchange failed');
+          return res.json();
+        })
+        .then((data) => {
+          if (data.access_token && data.user) {
+            localStorage.setItem('token', data.access_token);
+            if (data.refresh_token) {
+              localStorage.setItem('refresh_token', data.refresh_token);
+            }
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setUser(data.user);
+            setShowLandingPage(false);
+          }
+        })
+        .catch((err) => console.error('OAuth code exchange error:', err))
+        .finally(() => {
+          window.history.replaceState(null, '', window.location.pathname);
+          fetchChatHistory();
+        });
+      return;
+    }
+
+    // 2. Handle Supabase OAuth callback tokens in URL hash (#access_token=... or ?access_token=...)
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash || window.location.search);
+    const accessToken = params.get('access_token');
+
+    if (accessToken) {
+      const refreshToken = params.get('refresh_token');
+      localStorage.setItem('token', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+
+      // Fetch user profile from Supabase using the token
+      fetch(`${API_BASE_URL}/chat-history`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      })
+      .then(() => {
+        // Parse JWT payload for basic user metadata
+        try {
+          const payloadBase64 = accessToken.split('.')[1];
+          const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+          const userData = {
+            id: payload.sub,
+            email: payload.email,
+            name: payload.user_metadata?.full_name || payload.user_metadata?.name || payload.email?.split('@')[0] || 'User'
+          };
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+          setShowLandingPage(false);
+        } catch (e) {
+          console.error('Error parsing token payload:', e);
+        }
+      })
+      .catch((err) => console.error('OAuth verify error:', err))
+      .finally(() => {
+        // Clean hash from address bar without reloading
+        window.history.replaceState(null, '', window.location.pathname);
+      });
+      return;
+    }
+
+    // 2. Existing session check from localStorage
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setShowLandingPage(false); // Skip landing page if user is logged in
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setShowLandingPage(false); // Skip landing page if user is logged in
+      } catch (e) {
+        console.error('Error reading stored user:', e);
+      }
     }
     
     // Load saved theme
