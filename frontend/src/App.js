@@ -14,6 +14,7 @@ import MathStudyGuide from './MathStudyGuide';
 import Calculator from './components/Calculator';
 import { solveMathProblem } from './utils/mathSolver';
 import API_BASE_URL from './apiConfig';
+import Profile from './Profile';
 import './LandingPage.css';
 import './AuthModal.css';
 import './MathInput.css';
@@ -37,6 +38,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  User as UserIcon,
   Calculator as CalcIcon
 } from 'lucide-react'; // Add MathInput CSS
 
@@ -65,6 +67,14 @@ function App() {
   const [calcError, setCalcError] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false); // Add state for user dropdown
   const [darkMode, setDarkMode] = useState(false); // Add state for dark mode
+  // Initialize daily quota from localStorage cache if available, else default
+  const [dailyQuota, setDailyQuota] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dailyQuota');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { remaining: 5, total: 5 };
+  });
 
   // Tab data mapping
   const tabData = {
@@ -236,6 +246,20 @@ function App() {
       });
       const data = await response.json();
       setRecentChats(data.chats || []);
+
+      // Also fetch user usage quota
+      if (token) {
+        fetch(`${API_BASE_URL}/usage`, { headers })
+          .then(res => res.json())
+          .then(uData => {
+            if (uData && uData.remaining !== undefined) {
+              const newQuota = { remaining: uData.remaining, total: uData.limit || 5 };
+              setDailyQuota(newQuota);
+              localStorage.setItem('dailyQuota', JSON.stringify(newQuota));
+            }
+          })
+          .catch(() => {});
+      }
     } catch (error) {
       // Error handled silently
     }
@@ -379,6 +403,15 @@ function App() {
       const data = await response.json();
       const botMessage = { text: data.answer || data.error, sender: 'bot' };
       setMessages(prev => [...prev, botMessage]);
+
+      if (data.remaining !== undefined && data.remaining !== null) {
+        const updated = {
+          remaining: data.remaining,
+          total: data.limit || dailyQuota.total
+        };
+        setDailyQuota(updated);
+        localStorage.setItem('dailyQuota', JSON.stringify(updated));
+      }
       
       // Refresh chat history from database
       fetchChatHistory();
@@ -630,17 +663,6 @@ function App() {
                     </div>
                   ))
                 )}
-                {recentChats.length > 0 && (
-                  <div className="clear-all-section">
-                    <button 
-                      className="clear-all-btn"
-                      onClick={clearChatHistory}
-                      title="Clear all chat history"
-                    >
-                      <X size={16} /> {t('clearAll')}
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
             
@@ -666,6 +688,15 @@ function App() {
                     <button 
                       className="user-dropdown-option"
                       onClick={() => {
+                        setSelectedMenuItem('profile');
+                        setShowUserDropdown(false);
+                      }}
+                    >
+                      <UserIcon size={16} /> Profile
+                    </button>
+                    <button 
+                      className="user-dropdown-option"
+                      onClick={() => {
                         handleLogout();
                         setShowUserDropdown(false);
                       }}
@@ -679,7 +710,25 @@ function App() {
           </div>
           
           <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
-            {selectedMenuItem === 'video-gallery' ? (
+            {selectedMenuItem === 'profile' ? (
+              <Profile 
+                user={user} 
+                onBack={() => setSelectedMenuItem('home')} 
+                onLogout={handleLogout}
+                dailyQuota={dailyQuota}
+                recentChatsCount={recentChats?.length || 0}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                language={language}
+                changeLanguage={changeLanguage}
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                onHistoryCleared={() => {
+                  setRecentChats([]);
+                  setMessages([]);
+                }}
+              />
+            ) : selectedMenuItem === 'video-gallery' ? (
               <VideoGallery />
             ) : selectedMenuItem === 'practice-zone' ? (
               practiceSubMenu === 'interactive-quizzes' ? (
@@ -772,6 +821,12 @@ function App() {
 
               {/* Input Container at the bottom */}
               <div className="input-container">
+                {user && (
+                  <div className={`daily-quota-badge ${dailyQuota.remaining <= 2 ? 'low' : ''}`}>
+                    <span className="quota-dot"></span>
+                    <span>{dailyQuota.remaining} / {dailyQuota.total} free questions left today</span>
+                  </div>
+                )}
                 {/* Drag & Drop Area */}
                 <div 
                   className="drag-drop-area" 

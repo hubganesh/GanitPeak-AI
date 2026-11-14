@@ -160,58 +160,70 @@ if not OPENROUTER_API_KEY:
 # Configure the API
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Choose the model with vision capabilities
-model = genai.GenerativeModel('gemini-3-flash-preview')
+# List of verified Gemini models with fallback sequence
+GEMINI_FALLBACK_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro'
+]
 
-# OpenRouter Configuration
-OPENROUTER_MODEL = 'openai/gpt-4o-mini'
+DAILY_USER_LIMIT = 5
 
-LANG_NAMES = {
-    'en': 'English',
-    'hi': 'Hindi',
-    'kn': 'Kannada'
-}
+def check_user_daily_limit(user_id, max_limit=DAILY_USER_LIMIT):
+    """
+    Check and increment daily message usage in Supabase.
+    Returns (is_allowed: bool, current_usage: int, remaining: int)
+    """
+    if not user_id:
+        return True, 0, max_limit
 
-def openrouter_generate_quiz(prompt):
-    """Generate quiz using OpenRouter API."""
-    import requests
-    import json
-    
-    headers = {
-        'Authorization': f'Bearer {OPENROUTER_API_KEY}',
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:3000',
-        'X-Title': 'MathVerse Quiz Generator'
-    }
-    
-    data = {
-        'model': OPENROUTER_MODEL,
-        'messages': [
-            {'role': 'system', 'content': 'You are a professional quiz generator. Return only valid JSON.'},
-            {'role': 'user', 'content': prompt}
-        ],
-        'temperature': 0.7,
-        'response_format': { 'type': 'json_object' }
-    }
-    
     try:
-        response = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers=headers,
-            json=data,
-            timeout=30  # Reduce timeout to give Gemini a chance if slow
-        )
+        # Call the atomic PostgreSQL function in Supabase
+        rpc_res = supabase.rpc('get_and_increment_usage', {
+            'p_user_id': user_id,
+            'p_max_limit': max_limit
+        }).execute()
         
-        if response.status_code == 200:
-            result = response.json()
-            content = result['choices'][0]['message']['content']
-            return content
-        else:
-            print(f"OpenRouter Error: {response.status_code} - {response.text}")
-            return None
+        data = rpc_res.data or {}
+        is_allowed = bool(data.get('allowed', True))
+        current_count = int(data.get('usage', 0))
+        remaining = int(data.get('remaining', max(0, max_limit - current_count)))
+
+        return is_allowed, current_count, remaining
     except Exception as e:
-        print(f"OpenRouter Exception: {str(e)}")
-        return None
+        print(f"Warning: Daily usage check error (failing open): {e}")
+        return True, 0, max_limit
+
+
+def generate_with_fallback(contents):
+    """
+    Attempt content generation across verified Gemini models.
+    Silently cascades to the next model upon quota (429) or not found (404).
+    """
+    last_error = None
+    for model_name in GEMINI_FALLBACK_MODELS:
+        try:
+            m = genai.GenerativeModel(model_name)
+            response = m.generate_content(contents)
+            if response and response.text:
+                return response.text
+        except Exception as err:
+            err_str = str(err).lower()
+            # If rate limit (429), quota exceeded, or model not found (404), continue to fallback
+            if '429' in err_str or 'quota' in err_str or 'resource_exhausted' in err_str or '404' in err_str or 'not found' in err_str:
+                print(f"Model {model_name} quota/error: {err}. Falling back...")
+                last_error = err
+                continue
+            # For other unexpected non-quota exceptions, record and try next
+            last_error = err
+            print(f"Model {model_name} failed: {err}. Trying next...")
+            continue
+            
+    raise Exception(f"All fallback models failed. Last error: {last_error}")
+
 
 def solve_math_question(question=None, image=None, subject='MathGPT', language='en'):
     """
@@ -265,13 +277,11 @@ Solution:
     prompt += f"\nIMPORTANT: You MUST respond in {lang_name}."
     
     if image:
-        # Use Gemini Vision
-        response = model.generate_content([prompt.format(question=question or "Solve the problem in this image"), image])
+        # Use Gemini Vision across fallback models
+        return generate_with_fallback([prompt.format(question=question or "Solve the problem in this image"), image])
     else:
-        # Text-only
-        response = model.generate_content(prompt.format(question=question))
-    
-    return response.text
+        # Text-only across fallback models
+        return generate_with_fallback(prompt.format(question=question))
 
 def voice_math_processing(transcript, language='en'):
     """
@@ -469,14 +479,82 @@ def keep_alive():
     cron_secret = os.getenv('CRON_SECRET')
     auth_header = request.headers.get('Authorization')
 
-    # If CRON_SECRET is configured, enforce Bearer authorization
-    if cron_secret and auth_header != f"Bearer {cron_secret}":
+    # Allow if CRON_SECRET matches, OR if called by Vercel Cron user-agent/headers
+    is_vercel_cron = request.headers.get('user-agent', '').startswith('vercel-cron')
+    if cron_secret and auth_header != f"Bearer {cron_secret}" and not is_vercel_cron:
         return jsonify({'error': 'Unauthorized'}), 401
 
     try:
-        # Lightweight read-only query to ping Supabase and keep it awake
+        # Ping Supabase to keep it awake
         supabase.table('chat_history').select('id').limit(1).execute()
         return jsonify({'success': True, 'message': 'Supabase ping successful'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/usage', methods=['GET'])
+@app.route('/api/usage', methods=['GET'])
+def get_user_usage():
+    user = get_supabase_user(request)
+    if not user:
+        return jsonify({'usage': 0, 'limit': DAILY_USER_LIMIT, 'remaining': DAILY_USER_LIMIT})
+
+    try:
+        from datetime import date
+        today = date.today().isoformat()
+        res = supabase.table('daily_usage').select('message_count').eq('user_id', user.id).eq('usage_date', today).execute()
+        current_count = res.data[0]['message_count'] if res.data else 0
+        remaining = max(0, DAILY_USER_LIMIT - current_count)
+        return jsonify({'usage': current_count, 'limit': DAILY_USER_LIMIT, 'remaining': remaining}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/user_stats', methods=['GET'])
+@app.route('/api/user_stats', methods=['GET'])
+def get_user_stats():
+    user = get_supabase_user(request)
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        # 1. Total chat problems solved
+        chats_res = supabase.table('chat_history').select('id, question', count='exact').eq('user_id', user.id).execute()
+        total_problems = chats_res.count if chats_res.count is not None else len(chats_res.data or [])
+
+        # 2. Quizzes statistics
+        quizzes_res = supabase.table('quiz_history').select('score, total, percentage, subject').eq('user_id', user.id).execute()
+        quizzes = quizzes_res.data or []
+        total_quizzes = len(quizzes)
+
+        avg_score = 0
+        subject_counts = {}
+        if total_quizzes > 0:
+            total_pct = sum([float(q.get('percentage') or 0) for q in quizzes])
+            avg_score = round(total_pct / total_quizzes, 1)
+
+            for q in quizzes:
+                subj = q.get('subject') or 'Mathematics'
+                subject_counts[subj] = subject_counts.get(subj, 0) + 1
+
+        # Determine favorite subject
+        fav_subject = 'MathVerse (MathGPT)'
+        if subject_counts:
+            fav_subject = max(subject_counts, key=subject_counts.get)
+
+        # Account creation / member since
+        created_at = None
+        if hasattr(user, 'created_at') and user.created_at:
+            created_at = user.created_at
+
+        return jsonify({
+            'total_problems': total_problems,
+            'total_quizzes': total_quizzes,
+            'avg_score': avg_score,
+            'favorite_subject': fav_subject,
+            'daily_limit': DAILY_USER_LIMIT,
+            'created_at': created_at
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -492,6 +570,17 @@ def solve():
     # Check for authentication token
     user = get_supabase_user(request)
     user_id = user.id if user else None
+
+    # Check daily limit for logged-in user
+    if user_id:
+        is_allowed, usage_count, remaining = check_user_daily_limit(user_id, DAILY_USER_LIMIT)
+        if not is_allowed:
+            return jsonify({
+                'answer': "You've reached your daily limit of 5 questions. Your quota resets at midnight UTC!",
+                'limit_reached': True,
+                'remaining': 0,
+                'usage': usage_count
+            }), 200
     
     if 'file' in request.files:
         file = request.files['file']
@@ -529,7 +618,24 @@ def solve():
             except Exception as db_err:
                 print(f"Failed to save chat to database: {db_err}")
         
-        return jsonify({'answer': answer, 'chat_id': chat_id})
+        # Compute remaining for response
+        remaining_count = None
+        if user_id:
+            try:
+                from datetime import date
+                today = date.today().isoformat()
+                u_res = supabase.table('daily_usage').select('message_count').eq('user_id', user_id).eq('usage_date', today).execute()
+                c_cnt = u_res.data[0]['message_count'] if u_res.data else 0
+                remaining_count = max(0, DAILY_USER_LIMIT - c_cnt)
+            except Exception:
+                pass
+
+        return jsonify({
+            'answer': answer,
+            'chat_id': chat_id,
+            'remaining': remaining_count,
+            'limit': DAILY_USER_LIMIT
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -543,14 +649,27 @@ def get_chat_history():
         
         user_id = user.id
         
-        # Get chat history - user-specific only
-        query = supabase.table("chat_history").select("*").order("timestamp", desc=True).limit(10)
+        # Get chat history - user-specific only (exclude heavy image_data to load fast)
+        query = supabase.table("chat_history").select("id, question, answer, timestamp, user_id").order("timestamp", desc=True).limit(10)
         query = query.eq("user_id", user_id)
         
         response = query.execute()
         return jsonify({'chats': response.data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/chat_history', methods=['DELETE'])
+def clear_all_chat_history():
+    try:
+        user = get_supabase_user(request)
+        if not user:
+            return jsonify({'error': 'Authentication required'}), 401
+
+        supabase.table("chat_history").delete().eq("user_id", user.id).execute()
+        return jsonify({'message': 'All chat history cleared successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/chat_history/<int:chat_id>', methods=['GET'])
 def get_single_chat(chat_id):
