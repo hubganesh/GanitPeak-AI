@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Profile.css';
+import { useToast } from './ToastContext';
 import { 
   User, 
   Mail, 
@@ -38,6 +39,7 @@ function Profile({
   setDarkMode,
   onHistoryCleared
 }) {
+  const toast = useToast();
   const [stats, setStats] = useState({
     total_problems: recentChatsCount,
     total_quizzes: 0,
@@ -89,10 +91,13 @@ function Profile({
         setStats(prev => ({ ...prev, total_problems: 0 }));
         setShowClearModal(false);
         setSuccessMessage('All chat history cleared from Supabase!');
+        toast.success('All chat history cleared successfully.');
         setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        toast.error('Failed to clear chat history.');
       }
     } catch (e) {
-      console.error(e);
+      toast.error('Network error. Could not clear history.');
     }
     setClearing(false);
   };
@@ -127,7 +132,18 @@ function Profile({
         {/* User Hero Section */}
         <div className="profile-hero">
           <div className="profile-avatar-large">
-            <span>{initial}</span>
+            {user.avatar ? (
+              <img 
+                src={user.avatar} 
+                alt={user.name || 'User'} 
+                className="profile-avatar-img"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <span>{initial}</span>
+            )}
           </div>
           <div className="profile-hero-info">
             <h3>{user.name || 'MathVerse Student'}</h3>

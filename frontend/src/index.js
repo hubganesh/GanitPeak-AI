@@ -5,15 +5,21 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { Analytics } from '@vercel/analytics/react';
 
+import { BrowserRouter } from 'react-router-dom';
 import { TranslationProvider } from './TranslationContext';
+import { ToastProvider } from './ToastContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <TranslationProvider>
-      <App />
-      <Analytics />
-    </TranslationProvider>
+    <BrowserRouter>
+      <TranslationProvider>
+        <ToastProvider>
+          <App />
+          <Analytics />
+        </ToastProvider>
+      </TranslationProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );
 

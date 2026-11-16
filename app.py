@@ -132,6 +132,7 @@ def get_supabase_user(req):
     """Helper to verify Supabase token and return user ID."""
     auth_header = req.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
+        print("[Auth] No Bearer token in Authorization header")
         return None
     
     token = auth_header.split(' ')[1]
@@ -139,8 +140,10 @@ def get_supabase_user(req):
         response = supabase.auth.get_user(token)
         if response.user:
             return response.user
-    except:
-        pass
+        else:
+            print("[Auth] get_user returned empty user")
+    except Exception as e:
+        print(f"[Auth] Supabase token validation error: {e}")
     return None
 
 print(f"Connected to Supabase at {SUPABASE_URL}")
@@ -159,6 +162,12 @@ if not OPENROUTER_API_KEY:
 
 # Configure the API
 genai.configure(api_key=GEMINI_API_KEY)
+
+LANG_NAMES = {
+    'en': 'English',
+    'hi': 'Hindi',
+    'kn': 'Kannada'
+}
 
 # List of verified Gemini models with fallback sequence
 GEMINI_FALLBACK_MODELS = [
@@ -366,6 +375,28 @@ def voice_math():
         return jsonify({'error': str(e)}), 500
 
     
+def normalize_email(email: str) -> str:
+    """
+    Normalizes email addresses to stop alias abuse (+1, dots in Gmail)
+    while keeping dots safe for providers where they matter (Outlook, edu, ac.in).
+    """
+    if not email or '@' not in email:
+        return (email or '').strip().lower()
+
+    email = email.strip().lower()
+    local, domain = email.split('@', 1)
+
+    # 1. Strip +alias subaddressing across all providers
+    local = local.split('+')[0]
+
+    # 2. Gmail / Googlemail ignores all dots
+    if domain in ['gmail.com', 'googlemail.com']:
+        local = local.replace('.', '')
+        domain = 'gmail.com'
+
+    return f"{local}@{domain}"
+
+
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -373,10 +404,12 @@ def register():
     if not data or not data.get('email') or not data.get('password') or not data.get('name'):
         return jsonify({'message': 'Name, email, and password are required'}), 400
     
+    clean_email = normalize_email(data['email'])
+    
     try:
         # Use Supabase Auth for registration
         response = supabase.auth.sign_up({
-            "email": data['email'],
+            "email": clean_email,
             "password": data['password'],
             "options": {
                 "data": {
@@ -403,10 +436,12 @@ def login():
     if not data or not data.get('email') or not data.get('password'):
         return jsonify({'message': 'Email and password are required'}), 400
     
+    clean_email = normalize_email(data['email'])
+    
     try:
         # Sign in with Supabase Auth
         response = supabase.auth.sign_in_with_password({
-            "email": data['email'],
+            "email": clean_email,
             "password": data['password']
         })
         
@@ -423,6 +458,38 @@ def login():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/auth/refresh', methods=['POST'])
+@app.route('/api/auth/refresh', methods=['POST'])
+def refresh_token():
+    data = request.get_json() or {}
+    refresh_token = data.get('refresh_token')
+    if not refresh_token:
+        return jsonify({'error': 'Missing refresh_token'}), 400
+
+    try:
+        res = supabase.auth.refresh_session(refresh_token)
+        if not res or not res.session:
+            return jsonify({'error': 'Invalid or expired refresh token'}), 401
+
+        session = res.session
+        user = res.user
+        user_meta = user.user_metadata or {}
+        avatar_url = user_meta.get('avatar_url') or user_meta.get('picture')
+        return jsonify({
+            'access_token': session.access_token,
+            'refresh_token': session.refresh_token,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'name': user_meta.get('full_name') or user_meta.get('name') or (user.email.split('@')[0] if user.email else 'User'),
+                'avatar': avatar_url
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 401
+
 
 
 @app.route('/auth/google', methods=['GET'])
@@ -460,13 +527,16 @@ def auth_callback():
         response = supabase.auth.exchange_code_for_session({'auth_code': code})
         user = response.user
         session = response.session
+        user_meta = user.user_metadata or {}
+        avatar_url = user_meta.get('avatar_url') or user_meta.get('picture')
         return jsonify({
             'access_token': session.access_token,
             'refresh_token': session.refresh_token,
             'user': {
                 'id': user.id,
                 'email': user.email,
-                'name': user.user_metadata.get('full_name') or user.user_metadata.get('name') or user.email.split('@')[0]
+                'name': user_meta.get('full_name') or user_meta.get('name') or user.email.split('@')[0],
+                'avatar': avatar_url
             }
         }), 200
     except Exception as e:

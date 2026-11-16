@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import API_BASE_URL from './apiConfig';
 import './PerformanceReports.css';
 
-const PerformanceReports = () => {
+const PerformanceReports = ({ user }) => {
   const { t, formatNumber } = useTranslation();
   const [quizHistory, setQuizHistory] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState('all');
@@ -29,18 +29,44 @@ const PerformanceReports = () => {
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [user]);
 
   const loadHistory = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setQuizHistory([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      let headers = { 'Authorization': `Bearer ${token}` };
+      let response = await fetch(`${API_BASE_URL}/quiz_history`, { headers });
+
+      // If token expired (401), try refreshing using saved refresh_token
+      if (response.status === 401) {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken })
+          });
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.access_token) {
+              localStorage.setItem('token', refreshData.access_token);
+              if (refreshData.refresh_token) {
+                localStorage.setItem('refresh_token', refreshData.refresh_token);
+              }
+              headers = { 'Authorization': `Bearer ${refreshData.access_token}` };
+              response = await fetch(`${API_BASE_URL}/quiz_history`, { headers });
+            }
+          }
+        }
       }
-      
-      const response = await fetch(`${API_BASE_URL}/quiz_history`, { headers });
+
       const data = await response.json();
       setQuizHistory(data.quizzes || []);
     } catch (error) {

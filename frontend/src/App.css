@@ -47,13 +47,13 @@
 /* Hamburger Menu Button */
 .hamburger-menu {
   position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 101;
+  top: 15px;
+  left: 10px;
+  z-index: 105;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   width: 50px;
   height: 50px;
@@ -66,9 +66,25 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
+/* When sidebar is expanded, move button to the top-right corner inside the sidebar header */
+.hamburger-menu.expanded {
+  left: 218px;
+}
+
+body.dark-mode .hamburger-menu {
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
 .hamburger-menu:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+body.dark-mode .hamburger-menu:hover {
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5);
 }
 
 .hamburger-line {
@@ -984,7 +1000,21 @@ body.dark-mode .daily-quota-badge.low {
   }
 
   .sidebar {
-    z-index: 102; /* Above hamburger menu */
+    z-index: 106; /* Above hamburger button and overlay */
+  }
+
+  .hamburger-menu {
+    top: 12px;
+    left: 12px;
+    z-index: 107;
+  }
+
+  .hamburger-menu.expanded {
+    left: 218px;
+  }
+
+  .sidebar.collapsed .sidebar-user.sidebar-user-top {
+    margin-top: 0; /* No offset needed on mobile when sidebar is offscreen */
   }
 
   .main-content.sidebar-collapsed,
@@ -3511,13 +3541,50 @@ body.dark-mode .close-btn:hover {
   }
 }
 
-/* Sidebar User Section - ChatGPT Style */
+/* Sidebar User Section - Top of Sidebar */
 .sidebar-user {
-  padding: 1rem;
-  border-top: 1px solid #e1e4e8;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #e1e4e8;
   background: white;
-  margin-top: auto;
   position: relative;
+  transition: all 0.2s ease;
+}
+
+.sidebar.expanded .sidebar-user.sidebar-user-top {
+  padding-right: 65px; /* Leave space for the open/close button at the top */
+}
+
+.sidebar.collapsed .sidebar-user.sidebar-user-top {
+  margin-top: 60px; /* Leave space below the toggle button when collapsed */
+}
+
+.sidebar-user.sidebar-user-top {
+  margin-top: 0;
+  border-top: none;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+body.dark-mode .sidebar-user.sidebar-user-top {
+  border-bottom: 1px solid #404040;
+}
+
+.user-dropdown-menu.user-dropdown-menu-top {
+  top: 100%;
+  bottom: auto;
+  margin-top: 8px;
+  margin-bottom: 0;
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sidebar-user-content {
@@ -3535,6 +3602,14 @@ body.dark-mode .close-btn:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .user-avatar-icon {
@@ -4532,8 +4607,49 @@ body.dark-mode .lang-btn:hover {
   transform: scale(1.05);
 }
 
-body.dark-mode .lang-btn.active {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+/* Copy Solution Action Row */
+.message-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+body.dark-mode .message-actions-row {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.copy-solution-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #4f46e5;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.copy-solution-btn:hover {
+  background: #4f46e5;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+body.dark-mode .copy-solution-btn {
+  background: rgba(129, 140, 248, 0.12);
+  border-color: rgba(129, 140, 248, 0.25);
+  color: #a5b4fc;
+}
+
+body.dark-mode .copy-solution-btn:hover {
+  background: #6366f1;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }

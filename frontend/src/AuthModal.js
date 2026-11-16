@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import './AuthModal.css';
 import API_BASE_URL from './apiConfig';
+import { useToast } from './ToastContext';
 
 function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
+  const toast = useToast();
   // state for login or register
   const [state, setState] = useState(initialMode);
 
@@ -62,12 +64,16 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
           };
           localStorage.setItem('user', JSON.stringify(userData));
           localStorage.setItem('token', result.access_token);
+          if (result.refresh_token) {
+            localStorage.setItem('refresh_token', result.refresh_token);
+          }
 
           // Close modal and start chat with user data
           onClose();
           onStartChat(userData);
+          toast.success(`Welcome back, ${userData.name || 'Student'}!`);
         } else {
-          alert(result.message || 'Login failed');
+          toast.error(result.message || 'Login failed. Please check your credentials.');
         }
       } else {
         // Register logic
@@ -86,15 +92,15 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
         const result = await response.json();
 
         if (response.ok) {
-          alert('Registration successful! Please login.');
+          toast.success('Registration successful! Please login.');
           setState("login");
           setData({ name: "", email: "", password: "" });
         } else {
-          alert(result.message || 'Registration failed');
+          toast.error(result.message || 'Registration failed');
         }
       }
     } catch (error) {
-      alert('Network error. Please try again.');
+      toast.error('Network error. Please check your internet connection.');
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,117 @@
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 99999;
+  pointer-events: none;
+  max-width: 400px;
+  width: calc(100vw - 32px);
+}
+
+.toast-card {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.2s ease;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  color: inherit;
+}
+
+.toast-close-btn:hover {
+  opacity: 1;
+}
+
+/* Toast Variants */
+.toast-success {
+  background: rgba(240, 253, 244, 0.95);
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+
+body.dark-mode .toast-success {
+  background: rgba(20, 83, 45, 0.95);
+  border-color: #22c55e;
+  color: #dcfce7;
+}
+
+.toast-error {
+  background: rgba(254, 242, 242, 0.95);
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+body.dark-mode .toast-error {
+  background: rgba(127, 29, 29, 0.95);
+  border-color: #ef4444;
+  color: #fee2e2;
+}
+
+.toast-info {
+  background: rgba(240, 249, 255, 0.95);
+  border: 1px solid #7dd3fc;
+  color: #0369a1;
+}
+
+body.dark-mode .toast-info {
+  background: rgba(12, 74, 110, 0.95);
+  border-color: #0ea5e9;
+  color: #e0f2fe;
+}
+
+@media (max-width: 600px) {
+  .toast-container {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+

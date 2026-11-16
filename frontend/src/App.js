@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from './TranslationContext';
+import { useToast } from './ToastContext';
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import './App.css';
@@ -19,6 +21,8 @@ import './LandingPage.css';
 import './AuthModal.css';
 import './MathInput.css';
 import {
+  Copy,
+  Check,
   Home,
   Video,
   BookOpen,
@@ -44,14 +48,43 @@ import {
 
 function App() {
   const { language, t, formatNumber, changeLanguage } = useTranslation();
+  const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    return Boolean(urlParams.get('code') || hashParams.get('access_token') || urlParams.get('access_token'));
+  });
   const [uploadedImage, setUploadedImage] = useState(null);
-  const [selectedMenuItem, setSelectedMenuItem] = useState('home');
-  const [activeTab, setActiveTab] = useState('MathGPT');
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    localStorage.setItem('preferredSubject', newTab);
+  };
+  const [selectedMenuItem, setSelectedMenuItem] = useState(() => {
+    const p = window.location.pathname.toLowerCase();
+    if (p === '/profile') return 'profile';
+    if (p === '/videos' || p === '/video-gallery') return 'video-gallery';
+    if (p.startsWith('/practice') || p.startsWith('/quiz') || p.startsWith('/reports')) return 'practice-zone';
+    return 'home';
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('preferredSubject') || 'MathGPT';
+  });
+  const [copiedIndex, setCopiedIndex] = useState(null);
   const [recentChats, setRecentChats] = useState([]);
-  const [practiceSubMenu, setPracticeSubMenu] = useState('interactive-quizzes');
+  const [practiceSubMenu, setPracticeSubMenu] = useState(() => {
+    const p = window.location.pathname.toLowerCase();
+    if (p === '/reports' || p === '/practice/reports') return 'performance-reports';
+    return 'interactive-quizzes';
+  });
   const fileInputRef = useRef(null);
   const [showLandingPage, setShowLandingPage] = useState(true); // Add state for landing page
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Add state for sidebar collapse
@@ -100,13 +133,100 @@ function App() {
     }
   };
 
+  // Auto-refresh token helper function
+  const refreshAuthToken = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) return null;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.access_token) {
+          localStorage.setItem('token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('refresh_token', data.refresh_token);
+          }
+          if (data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setUser(data.user);
+          }
+          return data.access_token;
+        }
+      } else {
+        // Refresh token itself expired -> clean up dead session
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
+    } catch (err) {
+      console.error('Silent refresh failed:', err);
+    }
+    return null;
+  };
+
   // Check for existing user session or OAuth redirect callback on mount
   useEffect(() => {
+    // Helper to verify or refresh stored token on app load
+    const initSession = async () => {
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+
+      if (token && userData) {
+        try {
+          // Check if token is expired (payload exp)
+          const payloadBase64 = token.split('.')[1];
+          if (payloadBase64) {
+            const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+            const isExpired = payload.exp && (payload.exp * 1000 < Date.now());
+            if (isExpired) {
+              const newToken = await refreshAuthToken();
+              if (newToken) {
+                setShowLandingPage(false);
+                return;
+              }
+            }
+          }
+
+          const parsedUser = JSON.parse(userData);
+
+          // If avatar is missing from old cached session, extract it from existing token payload
+          if (!parsedUser.avatar && token) {
+            try {
+              const payloadBase64 = token.split('.')[1];
+              if (payloadBase64) {
+                const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+                const userMeta = payload.user_metadata || {};
+                const avatar = userMeta.avatar_url || userMeta.picture || null;
+                if (avatar) {
+                  parsedUser.avatar = avatar;
+                  localStorage.setItem('user', JSON.stringify(parsedUser));
+                }
+              }
+            } catch {}
+          }
+
+          setUser(parsedUser);
+          setShowLandingPage(false);
+        } catch (e) {
+          console.error('Error reading stored user:', e);
+        }
+      }
+    };
+
     // 1. Check for PKCE Authorization Code (?code=...)
     const urlParams = new URLSearchParams(window.location.search);
     const authCode = urlParams.get('code');
 
     if (authCode) {
+      // Clean URL immediately so the code is never visible in the address bar
+      window.history.replaceState(null, '', window.location.pathname);
+
       fetch(`${API_BASE_URL}/auth/callback?code=${authCode}`)
         .then((res) => {
           if (!res.ok) throw new Error('Code exchange failed');
@@ -125,7 +245,7 @@ function App() {
         })
         .catch((err) => console.error('OAuth code exchange error:', err))
         .finally(() => {
-          window.history.replaceState(null, '', window.location.pathname);
+          setAuthLoading(false);
           fetchChatHistory();
         });
       return;
@@ -137,63 +257,97 @@ function App() {
     const accessToken = params.get('access_token');
 
     if (accessToken) {
+      // Clean URL immediately
+      window.history.replaceState(null, '', window.location.pathname);
+
       const refreshToken = params.get('refresh_token');
       localStorage.setItem('token', accessToken);
       if (refreshToken) {
         localStorage.setItem('refresh_token', refreshToken);
       }
 
-      // Fetch user profile from Supabase using the token
-      fetch(`${API_BASE_URL}/chat-history`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      })
-      .then(() => {
-        // Parse JWT payload for basic user metadata
-        try {
-          const payloadBase64 = accessToken.split('.')[1];
-          const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
-          const userData = {
-            id: payload.sub,
-            email: payload.email,
-            name: payload.user_metadata?.full_name || payload.user_metadata?.name || payload.email?.split('@')[0] || 'User'
-          };
-          localStorage.setItem('user', JSON.stringify(userData));
-          setUser(userData);
-          setShowLandingPage(false);
-        } catch (e) {
-          console.error('Error parsing token payload:', e);
-        }
-      })
-      .catch((err) => console.error('OAuth verify error:', err))
-      .finally(() => {
-        // Clean hash from address bar without reloading
-        window.history.replaceState(null, '', window.location.pathname);
-      });
+      // Parse JWT payload immediately on client side (instant, no extra network wait)
+      try {
+        const payloadBase64 = accessToken.split('.')[1];
+        const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+        const userMeta = payload.user_metadata || {};
+        const userData = {
+          id: payload.sub,
+          email: payload.email,
+          name: userMeta.full_name || userMeta.name || payload.email?.split('@')[0] || 'User',
+          avatar: userMeta.avatar_url || userMeta.picture || null
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        setShowLandingPage(false);
+      } catch (e) {
+        console.error('Error parsing token payload:', e);
+      } finally {
+        setAuthLoading(false);
+        fetchChatHistory();
+      }
       return;
     }
 
-    // 2. Existing session check from localStorage
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setShowLandingPage(false); // Skip landing page if user is logged in
-      } catch (e) {
-        console.error('Error reading stored user:', e);
-      }
-    }
-    
+    // 3. Existing session check from localStorage
+    initSession();
+
     // Load saved theme
     const savedTheme = localStorage.getItem('darkMode');
     if (savedTheme === 'true') {
       setDarkMode(true);
     }
-    
-    fetchChatHistory();
   }, []);
+
+  // Fetch chat history and quota whenever authenticated user changes
+  useEffect(() => {
+    if (user) {
+      fetchChatHistory();
+    }
+  }, [user]);
+
+  // Sync state when browser Back/Forward navigation occurs
+  useEffect(() => {
+    const path = location.pathname.toLowerCase();
+    if (path === '/profile') {
+      setSelectedMenuItem('profile');
+      setShowLandingPage(false);
+    } else if (path === '/videos' || path === '/video-gallery') {
+      setSelectedMenuItem('video-gallery');
+      setShowLandingPage(false);
+    } else if (path === '/reports' || path === '/practice/reports') {
+      setSelectedMenuItem('practice-zone');
+      setPracticeSubMenu('performance-reports');
+      setShowLandingPage(false);
+    } else if (path === '/quiz' || path === '/practice/quiz' || path === '/practice') {
+      setSelectedMenuItem('practice-zone');
+      setPracticeSubMenu('interactive-quizzes');
+      setShowLandingPage(false);
+    } else if (path === '/' || path === '/chat') {
+      setSelectedMenuItem('home');
+    }
+  }, [location.pathname]);
+
+  // Helper for navigating both URL and view state
+  const navigateTo = (view, subView = null) => {
+    setSelectedMenuItem(view);
+    if (subView) setPracticeSubMenu(subView);
+    if (sidebarCollapsed) setSidebarCollapsed(false);
+
+    if (view === 'profile') {
+      navigate('/profile');
+    } else if (view === 'video-gallery') {
+      navigate('/videos');
+    } else if (view === 'practice-zone') {
+      if (subView === 'performance-reports') {
+        navigate('/reports');
+      } else {
+        navigate('/quiz');
+      }
+    } else {
+      navigate('/');
+    }
+  };
 
   // Close tools dropdown when clicking outside
   useEffect(() => {
@@ -235,31 +389,43 @@ function App() {
 
   const fetchChatHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      let token = localStorage.getItem('token');
+      if (!token) {
+        setRecentChats([]);
+        return;
       }
+      let headers = { 'Authorization': `Bearer ${token}` };
 
-      const response = await fetch(`${API_BASE_URL}/chat_history`, {
+      let response = await fetch(`${API_BASE_URL}/chat_history`, {
         headers,
       });
+
+      // If token expired (401), automatically refresh it and retry once
+      if (response.status === 401) {
+        const refreshedToken = await refreshAuthToken();
+        if (refreshedToken) {
+          headers = { 'Authorization': `Bearer ${refreshedToken}` };
+          response = await fetch(`${API_BASE_URL}/chat_history`, { headers });
+        } else {
+          setRecentChats([]);
+          return;
+        }
+      }
+
       const data = await response.json();
       setRecentChats(data.chats || []);
 
       // Also fetch user usage quota
-      if (token) {
-        fetch(`${API_BASE_URL}/usage`, { headers })
-          .then(res => res.json())
-          .then(uData => {
-            if (uData && uData.remaining !== undefined) {
-              const newQuota = { remaining: uData.remaining, total: uData.limit || 5 };
-              setDailyQuota(newQuota);
-              localStorage.setItem('dailyQuota', JSON.stringify(newQuota));
-            }
-          })
-          .catch(() => {});
-      }
+      fetch(`${API_BASE_URL}/usage`, { headers })
+        .then(res => res.json())
+        .then(uData => {
+          if (uData && uData.remaining !== undefined) {
+            const newQuota = { remaining: uData.remaining, total: uData.limit || 5 };
+            setDailyQuota(newQuota);
+            localStorage.setItem('dailyQuota', JSON.stringify(newQuota));
+          }
+        })
+        .catch(() => {});
     } catch (error) {
       // Error handled silently
     }
@@ -314,7 +480,7 @@ function App() {
     setMessages([]);
     setInput('');
     setUploadedImage(null);
-    setSelectedMenuItem('home'); // Navigate to home page
+    navigateTo('home');
   };
 
   const handleStartChat = (userData) => {
@@ -367,6 +533,7 @@ function App() {
     ]);
     setInput('');
     setUploadedImage(null);
+    navigateTo('home');
   };
 
   const sendMessage = async () => {
@@ -413,11 +580,16 @@ function App() {
         localStorage.setItem('dailyQuota', JSON.stringify(updated));
       }
       
+      if (data.limit_reached) {
+        toast.info(data.answer || "Daily question quota reached.");
+      }
+      
       // Refresh chat history from database
       fetchChatHistory();
     } catch (error) {
       const errorMessage = { text: 'Error connecting to server.', sender: 'bot' };
       setMessages(prev => [...prev, errorMessage]);
+      toast.error('Network error. Failed to reach MathVerse server.');
     }
     setLoading(false);
   };
@@ -503,7 +675,28 @@ function App() {
 
   return (
     <div className="App">
-      {showLandingPage ? (
+      {authLoading ? (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: darkMode ? '#0f172a' : '#f8fafc',
+          color: darkMode ? '#f8fafc' : '#0f172a',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            border: '4px solid rgba(99, 102, 241, 0.2)',
+            borderTopColor: '#6366f1',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }}></div>
+          <p style={{ fontSize: '1.05rem', fontWeight: 500 }}>Signing you in securely...</p>
+        </div>
+      ) : showLandingPage ? (
         <LandingPage onStartChat={handleStartChat} />
       ) : (
         <>
@@ -525,13 +718,71 @@ function App() {
           )}
 
           <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
+            {/* User Section - Top of Sidebar */}
+            {user && (
+              <div className="sidebar-user sidebar-user-top">
+                <div 
+                  className="sidebar-user-content"
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <button 
+                    className="sidebar-user-avatar-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowUserDropdown(!showUserDropdown);
+                    }}
+                    title={user.name}
+                  >
+                    <div className="sidebar-user-avatar">
+                      {user.avatar ? (
+                        <img 
+                          src={user.avatar} 
+                          alt={user.name} 
+                          className="user-avatar-img"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="user-avatar-icon">{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
+                      )}
+                    </div>
+                  </button>
+                  <div className="sidebar-user-info">
+                    <span className="sidebar-user-name">{user.name}</span>
+                  </div>
+                </div>
+                {showUserDropdown && (
+                  <div className="user-dropdown-menu user-dropdown-menu-top">
+                    <button 
+                      className="user-dropdown-option"
+                      onClick={() => {
+                        navigateTo('profile');
+                        setShowUserDropdown(false);
+                      }}
+                    >
+                      <UserIcon size={16} /> Profile
+                    </button>
+                    <button 
+                      className="user-dropdown-option"
+                      onClick={() => {
+                        handleLogout();
+                        setShowUserDropdown(false);
+                        navigate('/');
+                      }}
+                    >
+                      <LogOut size={16} /> {t('logout')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="sidebar-menu">
               <div 
                 className={`menu-item ${selectedMenuItem === 'home' ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedMenuItem('home');
-                  if (sidebarCollapsed) setSidebarCollapsed(false);
-                }}
+                onClick={() => navigateTo('home')}
                 data-tooltip="Home"
               >
                 <span className="menu-icon"><Home size={20} /></span>
@@ -539,10 +790,7 @@ function App() {
               </div>
               <div 
                 className={`menu-item ${selectedMenuItem === 'video-gallery' ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedMenuItem('video-gallery');
-                  if (sidebarCollapsed) setSidebarCollapsed(false);
-                }}
+                onClick={() => navigateTo('video-gallery')}
                 data-tooltip="Video Gallery"
               >
                 <span className="menu-icon"><Video size={20} /></span>
@@ -550,10 +798,7 @@ function App() {
               </div>
               <div 
                 className={`menu-item ${selectedMenuItem === 'practice-zone' ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedMenuItem('practice-zone');
-                  if (sidebarCollapsed) setSidebarCollapsed(false);
-                }}
+                onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
                 data-tooltip="Practice Zone"
               >
                 <span className="menu-icon"><BookOpen size={20} /></span>
@@ -563,19 +808,13 @@ function App() {
                 <div className="sub-menu">
                   <div 
                     className={`sub-menu-item ${practiceSubMenu === 'interactive-quizzes' ? 'selected' : ''}`}
-                    onClick={() => {
-                      setPracticeSubMenu('interactive-quizzes');
-                      if (sidebarCollapsed) setSidebarCollapsed(false);
-                    }}
+                    onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
                   >
                     <BookOpen size={16} /> {t('interactiveQuizzes')}
                   </div>
                   <div 
                     className={`sub-menu-item ${practiceSubMenu === 'performance-reports' ? 'selected' : ''}`}
-                    onClick={() => {
-                      setPracticeSubMenu('performance-reports');
-                      if (sidebarCollapsed) setSidebarCollapsed(false);
-                    }}
+                    onClick={() => navigateTo('practice-zone', 'performance-reports')}
                   >
                     <BarChart3 size={16} /> {t('performanceReports')}
                   </div>
@@ -665,56 +904,17 @@ function App() {
                 )}
               </div>
             </div>
-            
-            {/* User Section - ChatGPT Style */}
-            {user && (
-              <div className="sidebar-user">
-                <div className="sidebar-user-content">
-                  <button 
-                    className="sidebar-user-avatar-btn"
-                    onClick={() => setShowUserDropdown(!showUserDropdown)}
-                    title=""
-                  >
-                    <div className="sidebar-user-avatar">
-                      <span className="user-avatar-icon">{user.name.charAt(0).toUpperCase()}</span>
-                    </div>
-                  </button>
-                  <div className="sidebar-user-info">
-                    <span className="sidebar-user-name">{user.name}</span>
-                  </div>
-                </div>
-                {showUserDropdown && (
-                  <div className="user-dropdown-menu">
-                    <button 
-                      className="user-dropdown-option"
-                      onClick={() => {
-                        setSelectedMenuItem('profile');
-                        setShowUserDropdown(false);
-                      }}
-                    >
-                      <UserIcon size={16} /> Profile
-                    </button>
-                    <button 
-                      className="user-dropdown-option"
-                      onClick={() => {
-                        handleLogout();
-                        setShowUserDropdown(false);
-                      }}
-                    >
-                      <LogOut size={16} /> {t('logout')}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           
           <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
             {selectedMenuItem === 'profile' ? (
               <Profile 
                 user={user} 
-                onBack={() => setSelectedMenuItem('home')} 
-                onLogout={handleLogout}
+                onBack={() => navigateTo('home')} 
+                onLogout={() => {
+                  handleLogout();
+                  navigate('/');
+                }}
                 dailyQuota={dailyQuota}
                 recentChatsCount={recentChats?.length || 0}
                 activeTab={activeTab}
@@ -734,7 +934,7 @@ function App() {
               practiceSubMenu === 'interactive-quizzes' ? (
                 <Quiz />
               ) : practiceSubMenu === 'performance-reports' ? (
-                <PerformanceReports />
+                <PerformanceReports user={user} />
               ) : null
             ) : (
               <>
@@ -753,25 +953,25 @@ function App() {
                 <div className="tabs-section">
                   <button
                     className={`tab-button ${activeTab === 'MathGPT' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('MathGPT')}
+                    onClick={() => handleTabChange('MathGPT')}
                   >
                     {t('mathVerse')}
                   </button>
                   <button
                     className={`tab-button ${activeTab === 'PhysicsGPT' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('PhysicsGPT')}
+                    onClick={() => handleTabChange('PhysicsGPT')}
                   >
                     {t('physicsVerse')}
                   </button>
                   <button
                     className={`tab-button ${activeTab === 'AccountingGPT' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('AccountingGPT')}
+                    onClick={() => handleTabChange('AccountingGPT')}
                   >
                     {t('accountingVerse')}
                   </button>
                   <button
                     className={`tab-button ${activeTab === 'ChemGPT' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('ChemGPT')}
+                    onClick={() => handleTabChange('ChemGPT')}
                   >
                     {t('chemVerse')}
                   </button>
@@ -797,6 +997,30 @@ function App() {
                         )}
                         <div className="message-text">
                           {renderText(msg.text)}
+                          {msg.sender === 'bot' && msg.text && (
+                            <div className="message-actions-row">
+                              <button
+                                className="copy-solution-btn"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(msg.text);
+                                  setCopiedIndex(index);
+                                  toast.success('Solution copied to clipboard!');
+                                  setTimeout(() => setCopiedIndex(null), 2500);
+                                }}
+                                title="Copy full solution"
+                              >
+                                {copiedIndex === index ? (
+                                  <>
+                                    <Check size={14} /> <span>Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={14} /> <span>Copy Solution</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
