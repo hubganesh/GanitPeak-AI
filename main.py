@@ -31,7 +31,7 @@ def solve_math_question(question):
     Solve a math question using Google Gemini API.
     """
     prompt = f"""
-You are Mathverse, an expert math tutor. Solve the following math question step-by-step with clear explanations and LaTeX formatting for mathematical expressions.
+You are GanitPeak, an expert math tutor. Solve the following math question step-by-step with clear explanations and LaTeX formatting for mathematical expressions.
 Explain the concept behind each solution. Respond clearly, friendly, and educationally—like a human math teacher.
 When uncertain, verify with reasoning or basic computation; never guess.
 
@@ -43,7 +43,7 @@ Solution:
     return response.text
 
 if __name__ == "__main__":
-    print("Welcome to Mathverse! Enter your math question (text or image path), or type 'quit' to exit.")
+    print("Welcome to GanitPeak! Enter your math question (text or image path), or type 'quit' to exit.")
     while True:
         question_input = input("Math Question or Image Path: ")
         if question_input.lower() == 'quit':

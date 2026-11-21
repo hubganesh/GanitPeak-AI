@@ -118,7 +118,7 @@ def add_security_headers(response):
 def home():
     return jsonify({
         "status": "online",
-        "message": "MathVerse AI Math Agent API is running successfully!"
+        "message": "GanitPeak AI Math Agent API is running successfully!"
     }), 200
 
 # (load_dotenv already called above before Flask app init)
@@ -178,34 +178,6 @@ GEMINI_FALLBACK_MODELS = [
     'gemini-1.5-flash-8b',
     'gemini-1.5-pro'
 ]
-
-DAILY_USER_LIMIT = 5
-
-def check_user_daily_limit(user_id, max_limit=DAILY_USER_LIMIT):
-    """
-    Check and increment daily message usage in Supabase.
-    Returns (is_allowed: bool, current_usage: int, remaining: int)
-    """
-    if not user_id:
-        return True, 0, max_limit
-
-    try:
-        # Call the atomic PostgreSQL function in Supabase
-        rpc_res = supabase.rpc('get_and_increment_usage', {
-            'p_user_id': user_id,
-            'p_max_limit': max_limit
-        }).execute()
-        
-        data = rpc_res.data or {}
-        is_allowed = bool(data.get('allowed', True))
-        current_count = int(data.get('usage', 0))
-        remaining = int(data.get('remaining', max(0, max_limit - current_count)))
-
-        return is_allowed, current_count, remaining
-    except Exception as e:
-        print(f"Warning: Daily usage check error (failing open): {e}")
-        return True, 0, max_limit
-
 
 def generate_with_fallback(contents):
     """
@@ -270,7 +242,7 @@ Solution:
 """,
         'AccountingGPT': """
 You are AccountingVerse, an expert accounting tutor. Solve the following accounting question step-by-step with clear explanations.
-Use proper accounting terminology, principles (GAAP/IFRS), and journal entry formats. Show calculations clearly and explain the reasoning behind each entry.
+Use propGanitPeakting terminology, principles (GAAP/IFRS), and journal entry formats. Show calculations clearly and explain the reasoning behind each entry.
 Provide practical examples and relate concepts to real business scenarios when applicable.
 
 Question: {question}
@@ -491,6 +463,20 @@ def refresh_token():
         return jsonify({'error': str(e)}), 401
 
 
+@app.route('/auth/forgot-password', methods=['POST'])
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json() or {}
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'message': 'Email is required'}), 400
+    try:
+        supabase.auth.reset_password_email(email)
+        return jsonify({'message': 'Password reset email sent'}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+
 
 @app.route('/auth/google', methods=['GET'])
 @app.route('/api/auth/google', methods=['GET'])
@@ -565,19 +551,7 @@ def keep_alive():
 @app.route('/usage', methods=['GET'])
 @app.route('/api/usage', methods=['GET'])
 def get_user_usage():
-    user = get_supabase_user(request)
-    if not user:
-        return jsonify({'usage': 0, 'limit': DAILY_USER_LIMIT, 'remaining': DAILY_USER_LIMIT})
-
-    try:
-        from datetime import date
-        today = date.today().isoformat()
-        res = supabase.table('daily_usage').select('message_count').eq('user_id', user.id).eq('usage_date', today).execute()
-        current_count = res.data[0]['message_count'] if res.data else 0
-        remaining = max(0, DAILY_USER_LIMIT - current_count)
-        return jsonify({'usage': current_count, 'limit': DAILY_USER_LIMIT, 'remaining': remaining}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'unlimited': True}), 200
 
 
 @app.route('/user_stats', methods=['GET'])
@@ -622,7 +596,6 @@ def get_user_stats():
             'total_quizzes': total_quizzes,
             'avg_score': avg_score,
             'favorite_subject': fav_subject,
-            'daily_limit': DAILY_USER_LIMIT,
             'created_at': created_at
         }), 200
     except Exception as e:
@@ -640,17 +613,6 @@ def solve():
     # Check for authentication token
     user = get_supabase_user(request)
     user_id = user.id if user else None
-
-    # Check daily limit for logged-in user
-    if user_id:
-        is_allowed, usage_count, remaining = check_user_daily_limit(user_id, DAILY_USER_LIMIT)
-        if not is_allowed:
-            return jsonify({
-                'answer': "You've reached your daily limit of 5 questions. Your quota resets at midnight UTC!",
-                'limit_reached': True,
-                'remaining': 0,
-                'usage': usage_count
-            }), 200
     
     if 'file' in request.files:
         file = request.files['file']
@@ -687,24 +649,10 @@ def solve():
                 chat_id = response.data[0]['id'] if response.data else None
             except Exception as db_err:
                 print(f"Failed to save chat to database: {db_err}")
-        
-        # Compute remaining for response
-        remaining_count = None
-        if user_id:
-            try:
-                from datetime import date
-                today = date.today().isoformat()
-                u_res = supabase.table('daily_usage').select('message_count').eq('user_id', user_id).eq('usage_date', today).execute()
-                c_cnt = u_res.data[0]['message_count'] if u_res.data else 0
-                remaining_count = max(0, DAILY_USER_LIMIT - c_cnt)
-            except Exception:
-                pass
 
         return jsonify({
             'answer': answer,
-            'chat_id': chat_id,
-            'remaining': remaining_count,
-            'limit': DAILY_USER_LIMIT
+            'chat_id': chat_id
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

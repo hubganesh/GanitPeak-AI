@@ -7,6 +7,7 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
   const toast = useToast();
   // state for login or register
   const [state, setState] = useState(initialMode);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // state for input value
   const [data, setData] = useState({
@@ -26,6 +27,32 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
   // handle change input value
   const onChangeHandler = (e) => {
     setData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // handle Forgot Password
+  const handleForgotPassword = async () => {
+    if (!data.email) {
+      toast.error('Please enter your email address first.');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email }),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        toast.success('Password reset link sent! Check your email.');
+      } else {
+        toast.error(result.message || 'Failed to send reset email.');
+      }
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   // handle Google Sign-in
@@ -179,7 +206,14 @@ function AuthModal({ isOpen, onClose, onStartChat, initialMode = 'login' }) {
 
           {state === "login" && (
             <div className="forgot-password">
-              <a href="#" className="forgot-link">Forgot password?</a>
+              <button
+                type="button"
+                className="forgot-link"
+                onClick={handleForgotPassword}
+                disabled={forgotLoading}
+              >
+                {forgotLoading ? 'Sending...' : 'Forgot password?'}
+              </button>
             </div>
           )}
 

@@ -1,6 +1,6 @@
-# MathVerse: An AI Math Agent
+# GanitPeak: An AI Math Agent
 
-MathVerse is an expert math tutor powered by Google Gemini API. It can solve math questions from school to advanced levels, providing step-by-step solutions with clear explanations and LaTeX formatting.
+GanitPeak is an expert math tutor powered by Google Gemini API. It can solve math questions from school to advanced levels, providing step-by-step solutions with clear explanations and LaTeX formatting.
 
 ## Features
 
@@ -86,7 +86,7 @@ If you are hosting your frontend on Vercel and your backend on Render, they conn
    - **Key**: `REACT_APP_API_URL`
    - **Value**: `https://your-app.onrender.com` (your deployed Render backend URL)
 
-   *(Note: This is automatically loaded by the frontend in [apiConfig.js](file:///c:/Users/Ganesh/Desktop/MathVerse-AI-Math-Agent/MathVerse-AI-Math-Agent-main/MathVerse-AI-Math-Agent-main/frontend/src/apiConfig.js))*
+   *(Note: This is automatically loaded by the frontend in [apiConfig.js](file:///c:/Users/Ganesh/Desktop/GanitPeak-AI-Math-Agent/GanitPeak-AI-Math-Agent-main/GanitPeak-AI-Math-Agent-main/frontend/src/apiConfig.js))*
 
 2. **Configure Backend to allow Frontend (CORS)**:
    In your Render deployment settings, configure the allowed CORS origins using the `ALLOWED_ORIGINS` environment variable:

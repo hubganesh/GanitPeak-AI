@@ -16,7 +16,6 @@ import MathStudyGuide from './MathStudyGuide';
 import Calculator from './components/Calculator';
 import { solveMathProblem } from './utils/mathSolver';
 import API_BASE_URL from './apiConfig';
-import Profile from './Profile';
 import './LandingPage.css';
 import './AuthModal.css';
 import './MathInput.css';
@@ -26,10 +25,7 @@ import {
   Home,
   Video,
   BookOpen,
-  MessageSquare,
-  PenTool,
   Edit3,
-  ChevronLeft,
   Menu,
   X,
   Upload,
@@ -37,13 +33,13 @@ import {
   Settings,
   BarChart3,
   Book,
-  Clock,
   Plus,
   LogOut,
   Moon,
   Sun,
-  User as UserIcon,
-  Calculator as CalcIcon
+  Calculator as CalcIcon,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react'; // Add MathInput CSS
 
 function App() {
@@ -69,7 +65,6 @@ function App() {
   };
   const [selectedMenuItem, setSelectedMenuItem] = useState(() => {
     const p = window.location.pathname.toLowerCase();
-    if (p === '/profile') return 'profile';
     if (p === '/videos' || p === '/video-gallery') return 'video-gallery';
     if (p.startsWith('/practice') || p.startsWith('/quiz') || p.startsWith('/reports')) return 'practice-zone';
     return 'home';
@@ -86,6 +81,7 @@ function App() {
     return 'interactive-quizzes';
   });
   const fileInputRef = useRef(null);
+  const chatInputRef = useRef(null); // ref for auto-focus
   const [showLandingPage, setShowLandingPage] = useState(true); // Add state for landing page
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Add state for sidebar collapse
   const [user, setUser] = useState(null); // Add state for user data
@@ -99,37 +95,31 @@ function App() {
   const [calcResult, setCalcResult] = useState(null);
   const [calcError, setCalcError] = useState(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false); // Add state for user dropdown
+  const [showClearModal, setShowClearModal] = useState(false); // Add state for clear history modal
+  const [clearing, setClearing] = useState(false); // Add state for clearing in progress
   const [darkMode, setDarkMode] = useState(false); // Add state for dark mode
-  // Initialize daily quota from localStorage cache if available, else default
-  const [dailyQuota, setDailyQuota] = useState(() => {
-    try {
-      const saved = localStorage.getItem('dailyQuota');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return { remaining: 5, total: 5 };
-  });
 
   // Tab data mapping
   const tabData = {
-    MathGPT: { 
-      name: t('mathVerse'), 
-      title: t('mathTitle'), 
-      subtitle: t('askMe') 
+    MathGPT: {
+      name: t('GanitPeak'),
+      title: t('mathTitle'),
+      subtitle: t('askMe')
     },
-    PhysicsGPT: { 
-      name: t('physicsVerse'), 
-      title: t('physicsTitle'), 
-      subtitle: t('askMe') 
+    PhysicsGPT: {
+      name: t('physicsVerse'),
+      title: t('physicsTitle'),
+      subtitle: t('askMe')
     },
-    AccountingGPT: { 
-      name: t('accountingVerse'), 
-      title: t('accountingTitle'), 
-      subtitle: t('askMe') 
+    AccountingGPT: {
+      name: t('accountingVerse'),
+      title: t('accountingTitle'),
+      subtitle: t('askMe')
     },
-    ChemGPT: { 
-      name: t('chemVerse'), 
-      title: t('chemTitle'), 
-      subtitle: t('askMe') 
+    ChemGPT: {
+      name: t('chemVerse'),
+      title: t('chemTitle'),
+      subtitle: t('askMe')
     }
   };
 
@@ -208,7 +198,7 @@ function App() {
                   localStorage.setItem('user', JSON.stringify(parsedUser));
                 }
               }
-            } catch {}
+            } catch { }
           }
 
           setUser(parsedUser);
@@ -299,7 +289,7 @@ function App() {
     }
   }, []);
 
-  // Fetch chat history and quota whenever authenticated user changes
+  // Fetch chat history whenever authenticated user changes
   useEffect(() => {
     if (user) {
       fetchChatHistory();
@@ -309,10 +299,7 @@ function App() {
   // Sync state when browser Back/Forward navigation occurs
   useEffect(() => {
     const path = location.pathname.toLowerCase();
-    if (path === '/profile') {
-      setSelectedMenuItem('profile');
-      setShowLandingPage(false);
-    } else if (path === '/videos' || path === '/video-gallery') {
+    if (path === '/videos' || path === '/video-gallery') {
       setSelectedMenuItem('video-gallery');
       setShowLandingPage(false);
     } else if (path === '/reports' || path === '/practice/reports') {
@@ -334,9 +321,7 @@ function App() {
     if (subView) setPracticeSubMenu(subView);
     if (sidebarCollapsed) setSidebarCollapsed(false);
 
-    if (view === 'profile') {
-      navigate('/profile');
-    } else if (view === 'video-gallery') {
+    if (view === 'video-gallery') {
       navigate('/videos');
     } else if (view === 'practice-zone') {
       if (subView === 'performance-reports') {
@@ -346,6 +331,10 @@ function App() {
       }
     } else {
       navigate('/');
+    }
+    // Auto-focus chat input when navigating home
+    if (view === 'home') {
+      setTimeout(() => { chatInputRef.current?.focus(); }, 100);
     }
   };
 
@@ -414,18 +403,6 @@ function App() {
 
       const data = await response.json();
       setRecentChats(data.chats || []);
-
-      // Also fetch user usage quota
-      fetch(`${API_BASE_URL}/usage`, { headers })
-        .then(res => res.json())
-        .then(uData => {
-          if (uData && uData.remaining !== undefined) {
-            const newQuota = { remaining: uData.remaining, total: uData.limit || 5 };
-            setDailyQuota(newQuota);
-            localStorage.setItem('dailyQuota', JSON.stringify(newQuota));
-          }
-        })
-        .catch(() => {});
     } catch (error) {
       // Error handled silently
     }
@@ -446,20 +423,28 @@ function App() {
     });
   };
 
-  const clearChatHistory = async () => {
+  const handleClearAllHistory = async () => {
+    setClearing(true);
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/chat_history`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (response.ok) {
         setRecentChats([]);
         setMessages([]);
         setInput('');
         setUploadedImage(null);
+        setShowClearModal(false);
+        toast.success('All chat history cleared successfully.');
+      } else {
+        toast.error('Failed to clear chat history.');
       }
     } catch (error) {
-      // Error handled silently
+      toast.error('Network error. Could not clear history.');
     }
+    setClearing(false);
   };
 
   const deleteChat = async (chatId) => {
@@ -571,25 +556,12 @@ function App() {
       const botMessage = { text: data.answer || data.error, sender: 'bot' };
       setMessages(prev => [...prev, botMessage]);
 
-      if (data.remaining !== undefined && data.remaining !== null) {
-        const updated = {
-          remaining: data.remaining,
-          total: data.limit || dailyQuota.total
-        };
-        setDailyQuota(updated);
-        localStorage.setItem('dailyQuota', JSON.stringify(updated));
-      }
-      
-      if (data.limit_reached) {
-        toast.info(data.answer || "Daily question quota reached.");
-      }
-      
       // Refresh chat history from database
       fetchChatHistory();
     } catch (error) {
       const errorMessage = { text: 'Error connecting to server.', sender: 'bot' };
       setMessages(prev => [...prev, errorMessage]);
-      toast.error('Network error. Failed to reach MathVerse server.');
+      toast.error('Network error. Failed to reach GanitPeak server.');
     }
     setLoading(false);
   };
@@ -674,584 +646,673 @@ function App() {
   };
 
   return (
-    <div className="App">
-      {authLoading ? (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: darkMode ? '#0f172a' : '#f8fafc',
-          color: darkMode ? '#f8fafc' : '#0f172a',
-          gap: '16px'
-        }}>
+    <>
+      <div className="App">
+        {authLoading ? (
           <div style={{
-            width: '42px',
-            height: '42px',
-            border: '4px solid rgba(99, 102, 241, 0.2)',
-            borderTopColor: '#6366f1',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite'
-          }}></div>
-          <p style={{ fontSize: '1.05rem', fontWeight: 500 }}>Signing you in securely...</p>
-        </div>
-      ) : showLandingPage ? (
-        <LandingPage onStartChat={handleStartChat} />
-      ) : (
-        <>
-          {/* Hamburger Menu Button */}
-          <button 
-            className={`hamburger-menu ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}
-            onClick={toggleSidebar}
-            title={sidebarCollapsed ? 'Open sidebar' : 'Close sidebar'}
-          >
-            {sidebarCollapsed ? <Menu size={24} /> : <X size={24} />}
-          </button>
-
-          {/* Backdrop for mobile sidebar */}
-          {sidebarCollapsed ? null : (
-            <div 
-              className="sidebar-backdrop" 
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: darkMode ? '#0f172a' : '#f8fafc',
+            color: darkMode ? '#f8fafc' : '#0f172a',
+            gap: '16px'
+          }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              border: '4px solid rgba(99, 102, 241, 0.2)',
+              borderTopColor: '#6366f1',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite'
+            }}></div>
+            <p style={{ fontSize: '1.05rem', fontWeight: 500 }}>Signing you in securely...</p>
+          </div>
+        ) : showLandingPage ? (
+          <LandingPage onStartChat={handleStartChat} />
+        ) : (
+          <>
+            {/* Hamburger Menu Button */}
+            <button
+              className={`hamburger-menu ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}
               onClick={toggleSidebar}
-            ></div>
-          )}
+              title={sidebarCollapsed ? 'Open sidebar' : 'Close sidebar'}
+            >
+              {sidebarCollapsed ? <Menu size={24} /> : <X size={24} />}
+            </button>
 
-          <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
-            {/* User Section - Top of Sidebar */}
-            {user && (
-              <div className="sidebar-user sidebar-user-top">
-                <div 
-                  className="sidebar-user-content"
-                  onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <button 
-                    className="sidebar-user-avatar-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowUserDropdown(!showUserDropdown);
-                    }}
-                    title={user.name}
-                  >
-                    <div className="sidebar-user-avatar">
-                      {user.avatar ? (
-                        <img 
-                          src={user.avatar} 
-                          alt={user.name} 
-                          className="user-avatar-img"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <span className="user-avatar-icon">{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
-                      )}
-                    </div>
-                  </button>
-                  <div className="sidebar-user-info">
-                    <span className="sidebar-user-name">{user.name}</span>
-                  </div>
-                </div>
-                {showUserDropdown && (
-                  <div className="user-dropdown-menu user-dropdown-menu-top">
-                    <button 
-                      className="user-dropdown-option"
-                      onClick={() => {
-                        navigateTo('profile');
-                        setShowUserDropdown(false);
-                      }}
-                    >
-                      <UserIcon size={16} /> Profile
-                    </button>
-                    <button 
-                      className="user-dropdown-option"
-                      onClick={() => {
-                        handleLogout();
-                        setShowUserDropdown(false);
-                        navigate('/');
-                      }}
-                    >
-                      <LogOut size={16} /> {t('logout')}
-                    </button>
-                  </div>
-                )}
-              </div>
+            {/* Backdrop for mobile sidebar */}
+            {sidebarCollapsed ? null : (
+              <div
+                className="sidebar-backdrop"
+                onClick={toggleSidebar}
+              ></div>
             )}
 
-            <div className="sidebar-menu">
-              <div 
-                className={`menu-item ${selectedMenuItem === 'home' ? 'selected' : ''}`}
-                onClick={() => navigateTo('home')}
-                data-tooltip="Home"
-              >
-                <span className="menu-icon"><Home size={20} /></span>
-                <span className="menu-text">{t('home')}</span>
-              </div>
-              <div 
-                className={`menu-item ${selectedMenuItem === 'video-gallery' ? 'selected' : ''}`}
-                onClick={() => navigateTo('video-gallery')}
-                data-tooltip="Video Gallery"
-              >
-                <span className="menu-icon"><Video size={20} /></span>
-                <span className="menu-text">{t('videoGallery')}</span>
-              </div>
-              <div 
-                className={`menu-item ${selectedMenuItem === 'practice-zone' ? 'selected' : ''}`}
-                onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
-                data-tooltip="Practice Zone"
-              >
-                <span className="menu-icon"><BookOpen size={20} /></span>
-                <span className="menu-text">{t('practiceZone')}</span>
-              </div>
-              {selectedMenuItem === 'practice-zone' && (
-                <div className="sub-menu">
-                  <div 
-                    className={`sub-menu-item ${practiceSubMenu === 'interactive-quizzes' ? 'selected' : ''}`}
-                    onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
+            <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : 'expanded'}`}>
+              {/* User Section - Top of Sidebar */}
+              {user && (
+                <div className="sidebar-user sidebar-user-top">
+                  <div
+                    className="sidebar-user-content"
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <BookOpen size={16} /> {t('interactiveQuizzes')}
-                  </div>
-                  <div 
-                    className={`sub-menu-item ${practiceSubMenu === 'performance-reports' ? 'selected' : ''}`}
-                    onClick={() => navigateTo('practice-zone', 'performance-reports')}
-                  >
-                    <BarChart3 size={16} /> {t('performanceReports')}
-                  </div>
-                </div>
-              )}
-              <div 
-                className={`menu-item ${selectedMenuItem === 'new-chat' ? 'selected' : ''}`}
-                onClick={() => {
-                  startNewChat();
-                  if (sidebarCollapsed) setSidebarCollapsed(false);
-                }}
-                data-tooltip="New Chat"
-              >
-                <span className="menu-icon"><Edit3 size={20} /></span>
-                <span className="menu-text">{t('newChat')}</span>
-              </div>
-              <div className="sidebar-theme-toggle">
-                <div 
-                  className="menu-item theme-toggle-menu-item"
-                  onClick={() => setDarkMode(!darkMode)}
-                  data-tooltip="Toggle Theme"
-                >
-                  <span className="menu-icon">{darkMode ? <Sun size={20} /> : <Moon size={20} />}</span>
-                  <span className="menu-text">{t('theme')}</span>
-                </div>
-              </div>
-              
-              <div className="sidebar-language-selector">
-                <div className="language-pill">
-                  <button 
-                    className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-                    onClick={() => changeLanguage('en')}
-                  >
-                    English
-                  </button>
-                  <button 
-                    className={`lang-btn ${language === 'hi' ? 'active' : ''}`}
-                    onClick={() => changeLanguage('hi')}
-                  >
-                    हिन्दी
-                  </button>
-                  <button 
-                    className={`lang-btn ${language === 'kn' ? 'active' : ''}`}
-                    onClick={() => changeLanguage('kn')}
-                  >
-                    ಕನ್ನಡ
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="sidebar-recent">
-              <div className="recent-header">
-                <h3>{t('recentChats')}</h3>
-              </div>
-              <div className="recent-chats">
-                {recentChats.length === 0 ? (
-                  <p className="no-chats">{t('noChats')}</p>
-                ) : (
-                  recentChats.map((chat) => (
-                    <div key={chat.id} className="recent-chat-item" onClick={(e) => {
-                      // Only load chat if not clicking the delete button
-                      if (!e.target.closest('.delete-chat-btn')) {
-                        loadRecentChat(chat);
-                      }
-                    }}>
-                      <div className="recent-chat-content">
-                        <div className="recent-chat-question">
-                          {chat.image ? '📷 ' : ''}{chat.question.length > 30 ? chat.question.substring(0, 30) + '...' : chat.question}
-                        </div>
-                        <div className="recent-chat-time">
-                          {new Date(chat.timestamp).toLocaleDateString()}
-                        </div>
+                    <button
+                      className="sidebar-user-avatar-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUserDropdown(!showUserDropdown);
+                      }}
+                      title={user.name}
+                    >
+                      <div className="sidebar-user-avatar">
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="user-avatar-img"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="user-avatar-icon">{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
+                        )}
                       </div>
-                      <button 
-                        className="delete-chat-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteChat(chat.id);
+                    </button>
+                    <div className="sidebar-user-info">
+                      <span className="sidebar-user-name">{user.name}</span>
+                    </div>
+                  </div>
+                  {showUserDropdown && (
+                    <div className="user-dropdown-menu user-dropdown-menu-top">
+                      <button
+                        className="user-dropdown-option user-dropdown-option-danger"
+                        onClick={() => {
+                          setShowClearModal(true);
+                          setShowUserDropdown(false);
                         }}
-                        title="Delete chat"
                       >
-                        <X size={14} />
+                        <Trash2 size={16} /> Clear All Chat History
+                      </button>
+                      <button
+                        className="user-dropdown-option"
+                        onClick={() => {
+                          handleLogout();
+                          setShowUserDropdown(false);
+                          navigate('/');
+                        }}
+                      >
+                        <LogOut size={16} /> {t('logout')}
                       </button>
                     </div>
-                  ))
+                  )}
+                </div>
+              )}
+
+              <div className="sidebar-menu">
+                <div
+                  className={`menu-item ${selectedMenuItem === 'home' ? 'selected' : ''}`}
+                  onClick={() => navigateTo('home')}
+                  data-tooltip="Home"
+                >
+                  <span className="menu-icon"><Home size={20} /></span>
+                  <span className="menu-text">{t('home')}</span>
+                </div>
+                <div
+                  className={`menu-item ${selectedMenuItem === 'video-gallery' ? 'selected' : ''}`}
+                  onClick={() => navigateTo('video-gallery')}
+                  data-tooltip="Video Gallery"
+                >
+                  <span className="menu-icon"><Video size={20} /></span>
+                  <span className="menu-text">{t('videoGallery')}</span>
+                </div>
+                <div
+                  className={`menu-item ${selectedMenuItem === 'practice-zone' ? 'selected' : ''}`}
+                  onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
+                  data-tooltip="Practice Zone"
+                >
+                  <span className="menu-icon"><BookOpen size={20} /></span>
+                  <span className="menu-text">{t('practiceZone')}</span>
+                </div>
+                {selectedMenuItem === 'practice-zone' && (
+                  <div className="sub-menu">
+                    <div
+                      className={`sub-menu-item ${practiceSubMenu === 'interactive-quizzes' ? 'selected' : ''}`}
+                      onClick={() => navigateTo('practice-zone', 'interactive-quizzes')}
+                    >
+                      <BookOpen size={16} /> {t('interactiveQuizzes')}
+                    </div>
+                    <div
+                      className={`sub-menu-item ${practiceSubMenu === 'performance-reports' ? 'selected' : ''}`}
+                      onClick={() => navigateTo('practice-zone', 'performance-reports')}
+                    >
+                      <BarChart3 size={16} /> {t('performanceReports')}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-          </div>
-          
-          <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
-            {selectedMenuItem === 'profile' ? (
-              <Profile 
-                user={user} 
-                onBack={() => navigateTo('home')} 
-                onLogout={() => {
-                  handleLogout();
-                  navigate('/');
-                }}
-                dailyQuota={dailyQuota}
-                recentChatsCount={recentChats?.length || 0}
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                language={language}
-                changeLanguage={changeLanguage}
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                onHistoryCleared={() => {
-                  setRecentChats([]);
-                  setMessages([]);
-                }}
-              />
-            ) : selectedMenuItem === 'video-gallery' ? (
-              <VideoGallery />
-            ) : selectedMenuItem === 'practice-zone' ? (
-              practiceSubMenu === 'interactive-quizzes' ? (
-                <Quiz />
-              ) : practiceSubMenu === 'performance-reports' ? (
-                <PerformanceReports user={user} />
-              ) : null
-            ) : (
-              <>
-            <header className="App-header">
-              <div className="header-content">
-                <div className="header-main">
-                  <div className="logo-circle">
-                    <span className="logo-symbol">√</span>
-                  </div>
-                  <div className="content-section">
-                    <div className="title-section">
-                      <h1>{tabData[activeTab].title}</h1>
-                    </div>
+                <div
+                  className={`menu-item ${selectedMenuItem === 'new-chat' ? 'selected' : ''}`}
+                  onClick={() => {
+                    startNewChat();
+                    if (sidebarCollapsed) setSidebarCollapsed(false);
+                  }}
+                  data-tooltip="New Chat"
+                >
+                  <span className="menu-icon"><Edit3 size={20} /></span>
+                  <span className="menu-text">{t('newChat')}</span>
+                </div>
+                <div className="sidebar-theme-toggle">
+                  <div
+                    className="menu-item theme-toggle-menu-item"
+                    onClick={() => setDarkMode(!darkMode)}
+                    data-tooltip="Toggle Theme"
+                  >
+                    <span className="menu-icon">{darkMode ? <Sun size={20} /> : <Moon size={20} />}</span>
+                    <span className="menu-text">{t('theme')}</span>
                   </div>
                 </div>
-                <div className="tabs-section">
-                  <button
-                    className={`tab-button ${activeTab === 'MathGPT' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('MathGPT')}
-                  >
-                    {t('mathVerse')}
-                  </button>
-                  <button
-                    className={`tab-button ${activeTab === 'PhysicsGPT' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('PhysicsGPT')}
-                  >
-                    {t('physicsVerse')}
-                  </button>
-                  <button
-                    className={`tab-button ${activeTab === 'AccountingGPT' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('AccountingGPT')}
-                  >
-                    {t('accountingVerse')}
-                  </button>
-                  <button
-                    className={`tab-button ${activeTab === 'ChemGPT' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('ChemGPT')}
-                  >
-                    {t('chemVerse')}
-                  </button>
+
+                <div className="sidebar-language-selector">
+                  <div className="language-pill">
+                    <button
+                      className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+                      onClick={() => changeLanguage('en')}
+                    >
+                      English
+                    </button>
+                    <button
+                      className={`lang-btn ${language === 'hi' ? 'active' : ''}`}
+                      onClick={() => changeLanguage('hi')}
+                    >
+                      हिन्दी
+                    </button>
+                    <button
+                      className={`lang-btn ${language === 'kn' ? 'active' : ''}`}
+                      onClick={() => changeLanguage('kn')}
+                    >
+                      ಕನ್ನಡ
+                    </button>
+                  </div>
                 </div>
               </div>
-            </header>
-            <div className="main-container">
-              {/* Chat History in the middle */}
-              <div className="chat-container">
-                <div className="chat-messages" ref={chatMessagesRef}>
-                  {messages.length === 0 ? (
-                    <div className="welcome-message">
-                      <h2>{t('welcome')} {tabData[activeTab].name}</h2>
-                      <p>{t('askMe')}</p>
-                    </div>
+
+              <div className="sidebar-recent">
+                <div className="recent-header">
+                  <h3>{t('recentChats')}</h3>
+                </div>
+                <div className="recent-chats">
+                  {recentChats.length === 0 ? (
+                    <p className="no-chats">{t('noChats')}</p>
                   ) : (
-                    messages.map((msg, index) => (
-                      <div key={index} className={`message ${msg.sender}`}>
-                        {msg.image && (
-                          <div className="message-image">
-                            <img src={URL.createObjectURL(msg.image)} alt="Question" />
+                    recentChats.map((chat) => (
+                      <div key={chat.id} className="recent-chat-item" onClick={(e) => {
+                        // Only load chat if not clicking the delete button
+                        if (!e.target.closest('.delete-chat-btn')) {
+                          loadRecentChat(chat);
+                        }
+                      }}>
+                        <div className="recent-chat-content">
+                          <div className="recent-chat-question">
+                            {chat.image ? '📷 ' : ''}{chat.question.length > 30 ? chat.question.substring(0, 30) + '...' : chat.question}
                           </div>
-                        )}
-                        <div className="message-text">
-                          {renderText(msg.text)}
-                          {msg.sender === 'bot' && msg.text && (
-                            <div className="message-actions-row">
-                              <button
-                                className="copy-solution-btn"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(msg.text);
-                                  setCopiedIndex(index);
-                                  toast.success('Solution copied to clipboard!');
-                                  setTimeout(() => setCopiedIndex(null), 2500);
-                                }}
-                                title="Copy full solution"
-                              >
-                                {copiedIndex === index ? (
-                                  <>
-                                    <Check size={14} /> <span>Copied!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={14} /> <span>Copy Solution</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
+                          <div className="recent-chat-time">
+                            {new Date(chat.timestamp).toLocaleDateString()}
+                          </div>
                         </div>
+                        <button
+                          className="delete-chat-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteChat(chat.id);
+                          }}
+                          title="Delete chat"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     ))
                   )}
-                  {loading && (
-                    <div className="message bot loading-message">
-                      <div className="message-text">
-                        <div className="loading-indicator">
-                          <div className="loading-spinner-small"></div>
-                          <span>{t('solving')}</span>
-                        </div>
-                        <div className="loading-skeleton">
-                          <div className="skeleton-line"></div>
-                          <div className="skeleton-line short"></div>
-                          <div className="skeleton-line"></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
+            </div>
 
-              {/* Input Container at the bottom */}
-              <div className="input-container">
-                {user && (
-                  <div className={`daily-quota-badge ${dailyQuota.remaining <= 2 ? 'low' : ''}`}>
-                    <span className="quota-dot"></span>
-                    <span>{dailyQuota.remaining} / {dailyQuota.total} free questions left today</span>
-                  </div>
-                )}
-                {/* Drag & Drop Area */}
-                <div 
-                  className="drag-drop-area" 
-                  onDrop={handleDrop} 
-                  onDragOver={handleDragOver}
-                  onClick={handleClickUpload}
-                >
-                  {uploadedImage ? (
-                    <div className="uploaded-preview">
-                      <img src={URL.createObjectURL(uploadedImage)} alt="Uploaded" />
-                      <button className="remove-btn" onClick={(e) => { e.stopPropagation(); setUploadedImage(null); }}>×</button>
+            <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
+              {selectedMenuItem === 'video-gallery' ? (
+                <VideoGallery />
+              ) : selectedMenuItem === 'practice-zone' ? (
+                practiceSubMenu === 'interactive-quizzes' ? (
+                  <Quiz />
+                ) : practiceSubMenu === 'performance-reports' ? (
+                  <PerformanceReports user={user} />
+                ) : null
+              ) : (
+                <>
+                  <header className="App-header">
+                    <div className="header-content">
+                      <div className="header-main">
+                        <div className="logo-circle">
+                          <span className="logo-symbol">√</span>
+                        </div>
+                        <div className="content-section">
+                          <div className="title-section">
+                            <h1>{tabData[activeTab].title}</h1>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="tabs-section">
+                        <button
+                          className={`tab-button ${activeTab === 'MathGPT' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('MathGPT')}
+                        >
+                          {t('Math')}
+                        </button>
+                        <button
+                          className={`tab-button ${activeTab === 'PhysicsGPT' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('PhysicsGPT')}
+                        >
+                          {t('physics')}
+                        </button>
+                        <button
+                          className={`tab-button ${activeTab === 'AccountingGPT' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('AccountingGPT')}
+                        >
+                          {t('accounting')}
+                        </button>
+                        <button
+                          className={`tab-button ${activeTab === 'ChemGPT' ? 'active' : ''}`}
+                          onClick={() => handleTabChange('ChemGPT')}
+                        >
+                          {t('chemistry')}
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <>
-                      <div className="upload-icon"><Upload size={24} /></div>
-                      <p>{t('uploadImage')}</p>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => handleFileSelect(e.target.files[0])}
-                    accept="image/*,application/pdf"
-                    style={{ display: 'none' }}
-                  />
-                </div>
+                  </header>
+                  <div className="main-container">
+                    {/* Chat History in the middle */}
+                    <div className="chat-container">
+                      <div className="chat-messages" ref={chatMessagesRef}>
+                        {messages.length === 0 ? (
+                          <div className="welcome-message">
+                            <h2>{t('welcome')} {tabData[activeTab].name}</h2>
+                            <p>{t('askMe')}</p>
 
-                {/* Input Area */}
-                <div className="input-area">
-                  <div className="dropdown-buttons">
-                    <div className="tools-dropdown-container">
-                      <button 
-                        className={`dropdown-btn ${showToolsDropdown ? 'active' : ''}`}
-                        onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                            <div className="starter-prompts-container">
+                              <span className="starter-prompts-label">Try asking:</span>
+                              <div className="starter-prompts-grid">
+                                {(() => {
+                                  const promptsBySubject = {
+                                    'MathGPT': [
+                                      'Solve 2x + 5 = 15 step-by-step',
+                                      'Explain the Pythagorean theorem with examples',
+                                      'Find the derivative of f(x) = x³ - 4x + 7',
+                                      'How do I calculate compound interest?'
+                                    ],
+                                    'PhysicsGPT': [
+                                      'Calculate velocity if distance is 100m and time is 5s',
+                                      'Explain Newton’s three laws of motion',
+                                      'What is the difference between mass and weight?',
+                                      'Explain Snell’s Law of refraction'
+                                    ],
+                                    'ChemGPT': [
+                                      'Balance the equation: Fe + O₂ → Fe₂O₃',
+                                      'Explain ionic vs covalent bonding',
+                                      'What is the pH of a 0.01M HCl solution?',
+                                      'Explain the ideal gas law PV = nRT'
+                                    ],
+                                    'AccountingGPT': [
+                                      'Explain the fundamental accounting equation',
+                                      'What is the difference between debit and credit?',
+                                      'How do I prepare a balance sheet?',
+                                      'What is depreciation and how is it calculated?'
+                                    ]
+                                  };
+                                  const prompts = promptsBySubject[activeTab] || promptsBySubject['MathGPT'];
+                                  return prompts.map((promptText, pIdx) => (
+                                    <button
+                                      key={pIdx}
+                                      type="button"
+                                      className="starter-prompt-chip"
+                                      onClick={() => {
+                                        setInput(promptText);
+                                        setTimeout(() => chatInputRef.current?.focus(), 50);
+                                      }}
+                                    >
+                                      {promptText}
+                                    </button>
+                                  ));
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          messages.map((msg, index) => (
+                            <div key={index} className={`message ${msg.sender}`}>
+                              {msg.image && (
+                                <div className="message-image">
+                                  <img src={URL.createObjectURL(msg.image)} alt="Question" />
+                                </div>
+                              )}
+                              <div className="message-text">
+                                {renderText(msg.text)}
+                                {msg.sender === 'bot' && msg.text && (
+                                  <div className="message-actions-row">
+                                    <button
+                                      className="copy-solution-btn"
+                                      onClick={() => {
+                                        const textToCopy = msg.text || '';
+                                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                          navigator.clipboard.writeText(textToCopy)
+                                            .then(() => {
+                                              setCopiedIndex(index);
+                                              toast.success('Solution copied to clipboard!');
+                                              setTimeout(() => setCopiedIndex(null), 2500);
+                                            })
+                                            .catch(() => {
+                                              fallbackCopyText(textToCopy);
+                                            });
+                                        } else {
+                                          fallbackCopyText(textToCopy);
+                                        }
+
+                                        function fallbackCopyText(text) {
+                                          try {
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = text;
+                                            textArea.style.position = 'fixed';
+                                            textArea.style.left = '-999999px';
+                                            textArea.style.top = '-999999px';
+                                            document.body.appendChild(textArea);
+                                            textArea.focus();
+                                            textArea.select();
+                                            const successful = document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            if (successful) {
+                                              setCopiedIndex(index);
+                                              toast.success('Solution copied to clipboard!');
+                                              setTimeout(() => setCopiedIndex(null), 2500);
+                                            } else {
+                                              toast.error('Could not copy to clipboard.');
+                                            }
+                                          } catch {
+                                            toast.error('Could not copy to clipboard.');
+                                          }
+                                        }
+                                      }}
+                                      title="Copy full solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <Check size={14} /> <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Copy size={14} /> <span>Copy Solution</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        {loading && (
+                          <div className="message bot loading-message">
+                            <div className="message-text">
+                              <div className="loading-indicator">
+                                <div className="loading-spinner-small"></div>
+                                <span>{t('solving')}</span>
+                              </div>
+                              <div className="loading-skeleton">
+                                <div className="skeleton-line"></div>
+                                <div className="skeleton-line short"></div>
+                                <div className="skeleton-line"></div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Input Container at the bottom */}
+                    <div className="input-container">
+                      {/* Drag & Drop Area */}
+                      <div
+                        className="drag-drop-area"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onClick={handleClickUpload}
                       >
-                        <span className="btn-icon"><Settings size={16} /></span>
-                        <span className="btn-text">{t('tools')}</span>
-                        <span className="dropdown-arrow">{showToolsDropdown ? '▲' : '▼'}</span>
-                      </button>
-                      {showToolsDropdown && (
-                        <div className="tools-dropdown-menu">
-                          <button 
-                            className="tools-option"
-                            onClick={() => {
-                              setShowCanvasModal(true);
-                              setShowToolsDropdown(false);
-                            }}
-                          >
-                            <Plus size={16} /> {t('canvas')}
-                          </button>
-                          <button 
-                            className="tools-option"
-                            onClick={() => {
-                              setShowGraphCreator(true);
-                              setShowToolsDropdown(false);
-                            }}
-                          >
-                            <BarChart3 size={16} /> {t('graphCreator')}
-                          </button>
-                          <button 
-                            className="tools-option"
-                            onClick={() => {
-                              setShowStudyGuide(true);
-                              setShowToolsDropdown(false);
-                            }}
-                          >
-                            <Book size={16} /> {t('studyGuide')}
-                          </button>
-                          <button 
-                            className="tools-option"
-                            onClick={() => {
-                              setShowCalculator(true);
-                              setShowToolsDropdown(false);
-                            }}
-                          >
-                            <CalcIcon size={16} /> {t('calculator')}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <MathInput
-                    value={input}
-                    onChange={setInput}
-                    onKeyPress={handleKeyPress}
-                    placeholder={t('placeholder')}
-                    selectedTools={selectedTools}
-                    onRemoveTool={removeTool}
-                  />
-                  
-                  <button 
-                    className="send-btn" 
-                    onClick={sendMessage} 
-                    disabled={loading || (!input.trim() && !uploadedImage)}
-                  >
-                    <span className="send-icon"><Send size={20} /></span>
-                  </button>
-                </div>
-              </div>
-            </div>
-              </>
-            )}
-          </div>
-          {/* Canvas Drawing Modal */}
-          <CanvasDrawing 
-            isOpen={showCanvasModal}
-            onClose={() => setShowCanvasModal(false)}
-            onDone={handleCanvasDone}
-          />
-          
-          {/* Graph Creator Modal */}
-          {showGraphCreator && (
-            <div className="modal-overlay" onClick={() => setShowGraphCreator(false)}>
-              <div className="modal-content graph-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>Graph Creator</h3>
-                  <button 
-                    className="modal-close-btn"
-                    onClick={() => setShowGraphCreator(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <GraphCreator />
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Math Study Guide Modal */}
-          {showStudyGuide && (
-            <div className="modal-overlay" onClick={() => setShowStudyGuide(false)}>
-              <div className="modal-content study-guide-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3>{t('studyGuide')}</h3>
-                  <button 
-                    className="modal-close-btn"
-                    onClick={() => setShowStudyGuide(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <MathStudyGuide />
-                </div>
-              </div>
-            </div>
-          )}
+                        {uploadedImage ? (
+                          <div className="uploaded-preview">
+                            <img src={URL.createObjectURL(uploadedImage)} alt="Uploaded" />
+                            <button className="remove-btn" onClick={(e) => { e.stopPropagation(); setUploadedImage(null); }}>×</button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="upload-icon"><Upload size={24} /></div>
+                            <p>{t('uploadImage')}</p>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={(e) => handleFileSelect(e.target.files[0])}
+                          accept="image/*,application/pdf"
+                          style={{ display: 'none' }}
+                        />
+                      </div>
 
-          {/* Calculator Modal */}
-          {showCalculator && (
-            <div className="modal-overlay" onClick={() => setShowCalculator(false)}>
-              <div className="modal-content calculator-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <div style={{display: 'flex', alignItems: 'center', gap: '9px'}}>
-                    <div className="logo-circle">
-                      <span className="logo-symbol">√</span>
-                    </div>
-                    <h3>{t('advCalc')}</h3>
-                  </div>
-                  <button 
-                    className="modal-close-btn"
-                    onClick={() => setShowCalculator(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <Calculator onSolve={handleCalcSolve} onClear={handleCalcClear} />
-                  {calcResult && (
-                    <div className="calc-result-container">
-                      <h4>📊{t('solution')}</h4>
-                      <div className="calc-result-box">
-                        <p><strong>🔹{t('problem')}:</strong> {calcResult.problem}</p>
-                        <p><strong>🔹{t('modeDetected')}:</strong> {calcResult.mode}</p>
-                        <div className="calc-steps">
-                          <strong>🔹{t('steps')}:</strong>
-                          <ul>
-                            {calcResult.steps.map((step, idx) => (
-                              <li key={idx}>{step}</li>
-                            ))}
-                          </ul>
+                      {/* Input Area */}
+                      <div className="input-area">
+                        <div className="dropdown-buttons">
+                          <div className="tools-dropdown-container">
+                            <button
+                              className={`dropdown-btn ${showToolsDropdown ? 'active' : ''}`}
+                              onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+                            >
+                              <span className="btn-icon"><Settings size={16} /></span>
+                              <span className="btn-text">{t('tools')}</span>
+                              <span className="dropdown-arrow">{showToolsDropdown ? '▲' : '▼'}</span>
+                            </button>
+                            {showToolsDropdown && (
+                              <div className="tools-dropdown-menu">
+                                <button
+                                  className="tools-option"
+                                  onClick={() => {
+                                    setShowCanvasModal(true);
+                                    setShowToolsDropdown(false);
+                                  }}
+                                >
+                                  <Plus size={16} /> {t('canvas')}
+                                </button>
+                                <button
+                                  className="tools-option"
+                                  onClick={() => {
+                                    setShowGraphCreator(true);
+                                    setShowToolsDropdown(false);
+                                  }}
+                                >
+                                  <BarChart3 size={16} /> {t('graphCreator')}
+                                </button>
+                                <button
+                                  className="tools-option"
+                                  onClick={() => {
+                                    setShowStudyGuide(true);
+                                    setShowToolsDropdown(false);
+                                  }}
+                                >
+                                  <Book size={16} /> {t('studyGuide')}
+                                </button>
+                                <button
+                                  className="tools-option"
+                                  onClick={() => {
+                                    setShowCalculator(true);
+                                    setShowToolsDropdown(false);
+                                  }}
+                                >
+                                  <CalcIcon size={16} /> {t('calculator')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="calc-final-answer"><strong>🔹{t('finalAnswer')}:</strong> {calcResult.answer}</p>
+
+                        <MathInput
+                          inputRef={chatInputRef}
+                          value={input}
+                          onChange={setInput}
+                          onKeyPress={handleKeyPress}
+                          placeholder={t('placeholder')}
+                          selectedTools={selectedTools}
+                          onRemoveTool={removeTool}
+                        />
+
+                        <button
+                          className="send-btn"
+                          onClick={sendMessage}
+                          disabled={loading || (!input.trim() && !uploadedImage)}
+                        >
+                          <span className="send-icon"><Send size={20} /></span>
+                        </button>
                       </div>
                     </div>
-                  )}
-                  {calcError && (
-                    <div className="calc-error-container">
-                      <p className="calc-error-message">❌{calcError}</p>
-                    </div>
-                  )}
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Canvas Drawing Modal */}
+            <CanvasDrawing
+              isOpen={showCanvasModal}
+              onClose={() => setShowCanvasModal(false)}
+              onDone={handleCanvasDone}
+            />
+
+            {/* Graph Creator Modal */}
+            {showGraphCreator && (
+              <div className="modal-overlay" onClick={() => setShowGraphCreator(false)}>
+                <div className="modal-content graph-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>Graph Creator</h3>
+                    <button
+                      className="modal-close-btn"
+                      onClick={() => setShowGraphCreator(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="modal-body">
+                    <GraphCreator />
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* Math Study Guide Modal */}
+            {showStudyGuide && (
+              <div className="modal-overlay" onClick={() => setShowStudyGuide(false)}>
+                <div className="modal-content study-guide-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3>{t('studyGuide')}</h3>
+                    <button
+                      className="modal-close-btn"
+                      onClick={() => setShowStudyGuide(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="modal-body">
+                    <MathStudyGuide />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Calculator Modal */}
+            {showCalculator && (
+              <div className="modal-overlay" onClick={() => setShowCalculator(false)}>
+                <div className="modal-content calculator-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                      <div className="logo-circle">
+                        <span className="logo-symbol">√</span>
+                      </div>
+                      <h3>{t('advCalc')}</h3>
+                    </div>
+                    <button
+                      className="modal-close-btn"
+                      onClick={() => setShowCalculator(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="modal-body">
+                    <Calculator onSolve={handleCalcSolve} onClear={handleCalcClear} />
+                    {calcResult && (
+                      <div className="calc-result-container">
+                        <h4>📊{t('solution')}</h4>
+                        <div className="calc-result-box">
+                          <p><strong>🔹{t('problem')}:</strong> {calcResult.problem}</p>
+                          <p><strong>🔹{t('modeDetected')}:</strong> {calcResult.mode}</p>
+                          <div className="calc-steps">
+                            <strong>🔹{t('steps')}:</strong>
+                            <ul>
+                              {calcResult.steps.map((step, idx) => (
+                                <li key={idx}>{step}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <p className="calc-final-answer"><strong>🔹{t('finalAnswer')}:</strong> {calcResult.answer}</p>
+                        </div>
+                      </div>
+                    )}
+                    {calcError && (
+                      <div className="calc-error-container">
+                        <p className="calc-error-message">❌{calcError}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Clear All Chat History Confirmation Modal */}
+      {showClearModal && (
+        <div className="modal-backdrop-custom" onClick={() => !clearing && setShowClearModal(false)}>
+          <div className="modal-box-custom" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon-warn">
+              <AlertTriangle size={28} />
             </div>
-          )}
-        </>
+            <h3>Clear All Chat History?</h3>
+            <p>
+              Are you sure you want to delete all saved conversations? This action is permanent and cannot be undone.
+            </p>
+            <div className="modal-actions-custom">
+              <button
+                className="modal-cancel-btn"
+                onClick={() => setShowClearModal(false)}
+                disabled={clearing}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-confirm-delete-btn"
+                onClick={handleClearAllHistory}
+                disabled={clearing}
+              >
+                {clearing ? 'Clearing...' : 'Yes, Delete All'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

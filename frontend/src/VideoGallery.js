@@ -40,8 +40,8 @@ const VideoGallery = () => {
           maxWidth: '500px',
           lineHeight: '1.6'
         }}>
-          Video explanations and tutorials are currently under development. 
-          Stay tuned for interactive video content coming to MathVerse!
+          Video explanations and tutorials are currently under development.
+          Stay tuned for interactive video content coming to GanitPeak!
         </p>
       </div>
     </div>

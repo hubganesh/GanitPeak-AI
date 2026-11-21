@@ -25,14 +25,14 @@ function LandingPage({ onStartChat }) {
         const scrollTop = window.pageYOffset;
         const windowHeight = window.innerHeight;
         const documentHeight = document.documentElement.scrollHeight;
-        
+
         // Calculate scroll progress (0 to 1) with smoother transition
         const maxScroll = documentHeight - windowHeight;
         let progress = Math.min(scrollTop / maxScroll, 1);
-        
+
         // Apply easing function for more cinematic feel
         progress = progress * progress * (3 - 2 * progress); // Smoothstep function
-        
+
         setScrollProgress(progress);
       }
     };
@@ -49,23 +49,23 @@ function LandingPage({ onStartChat }) {
     <div className="landing-page" ref={landingRef}>
       {/* Morphing Background Layers */}
       <div className="background-morph">
-        <div 
+        <div
           className="bg-layer bg-layer-1"
-          style={{ 
+          style={{
             opacity: 1 - scrollProgress,
             transform: `scale(${1 + scrollProgress * 0.05})`
           }}
         ></div>
-        <div 
+        <div
           className="bg-layer bg-layer-2"
-          style={{ 
+          style={{
             opacity: scrollProgress,
             transform: `scale(${1.05 - scrollProgress * 0.05})`
           }}
         ></div>
-        <div 
+        <div
           className="morph-overlay"
-          style={{ 
+          style={{
             opacity: scrollProgress * (1 - scrollProgress) * 4 // Peak at 0.5 scroll
           }}
         ></div>
@@ -75,7 +75,7 @@ function LandingPage({ onStartChat }) {
         <div className="nav-container">
           <div className="nav-logo">
             <span className="nav-logo-symbol">√</span>
-            <span className="nav-logo-text">{t('mathVerse')}</span>
+            <span className="nav-logo-text">{t('GanitPeak')}</span>
           </div>
         </div>
       </nav>
@@ -86,10 +86,10 @@ function LandingPage({ onStartChat }) {
             <div className="logo-circle">
               <span className="logo-symbol">√</span>
             </div>
-            <h1>{t('mathVerse')}</h1>
+            <h1>{t('GanitPeak')}</h1>
             <p className="tagline">{t('tagline')}</p>
           </div>
-          
+
           <div className="hero-text">
             <h2>{t('heroTitle')}</h2>
             <p className="subtitle">
@@ -107,15 +107,15 @@ function LandingPage({ onStartChat }) {
               </button>
             </div>
             <p className="features-preview">
-              ✓ {t('feature1')}<br/>
-              ✓ {t('feature2')}<br/>
-              ✓ {t('feature3')}<br/>
+              ✓ {t('feature1')}<br />
+              ✓ {t('feature2')}<br />
+              ✓ {t('feature3')}<br />
               ✓ {t('feature4')}
             </p>
           </div>
         </div>
 
-        
+
       </div>
 
       <div className="features-section">
@@ -176,7 +176,7 @@ function LandingPage({ onStartChat }) {
             <h4>{t('chatHistory')}</h4>
             <p>{t('chatHistoryDesc')}</p>
           </div>
-          
+
         </div>
       </div>
 

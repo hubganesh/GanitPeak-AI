@@ -31,6 +31,14 @@
       "dest": "frontend/manifest.json"
     },
     {
+      "src": "/robots.txt",
+      "dest": "frontend/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "frontend/sitemap.xml"
+    },
+    {
       "src": "/logo(.*)",
       "dest": "frontend/logo$1"
     },

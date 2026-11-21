@@ -3,10 +3,11 @@ import { useTranslation } from './TranslationContext';
 import './MathInput.css';
 import API_BASE_URL from './apiConfig';
 
-const MathInput = ({ value, onChange, placeholder = "Type your question here...", onKeyPress, selectedTools = [], onRemoveTool }) => {
+const MathInput = ({ inputRef: externalInputRef, value, onChange, placeholder = "Type your question here...", onKeyPress, selectedTools = [], onRemoveTool }) => {
   const { language } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef(null);
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef || internalInputRef;
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [finalTranscript, setFinalTranscript] = useState('');
