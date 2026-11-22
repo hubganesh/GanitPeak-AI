@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mathverse-ai-math-agent.vercel.app/sitemap.xml
+Sitemap: https://ganitpeakai.vercel.app/sitemap.xml
