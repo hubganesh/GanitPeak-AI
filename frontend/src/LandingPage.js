@@ -194,6 +194,131 @@ function LandingPage({ onStartChat }) {
         </div>
       </div>
 
+      {/* Crawlable Subject Capabilities Grid for SEO */}
+      <section className="capabilities-section" aria-label="Subject Capabilities">
+        <div className="section-header-block">
+          <h2>Comprehensive AI Homework & Problem Solving on GanitPeak</h2>
+          <p>Whether you know us as <strong>GanitPeak</strong> or <strong>Ganit Peak (GanitPeak AI)</strong>, explore step-by-step solutions with detailed formulas, derivations, and balance sheets across all core STEM and business disciplines.</p>
+        </div>
+
+        <div className="capabilities-grid">
+          <article className="capability-card">
+            <div className="capability-icon">📐</div>
+            <h3>AI Math Solver</h3>
+            <p>
+              Master complex mathematical problems with instant, step-by-step guidance. Ganit Peak provides detailed proofs, derivations, and clear step breakdowns.
+            </p>
+            <ul className="capability-list">
+              <li><strong>Algebra:</strong> Polynomial factorization, quadratic formulas, systems of linear equations, and inequalities.</li>
+              <li><strong>Calculus:</strong> Limits, derivatives, chain rule, definite/indefinite integrals, and differential equations.</li>
+              <li><strong>Geometry:</strong> Coordinate geometry, polygon areas, circle theorems, and 3D surface area calculations.</li>
+              <li><strong>Trigonometry:</strong> Trigonometric identities, inverse functions, sine & cosine laws, and radian angles.</li>
+            </ul>
+          </article>
+
+          <article className="capability-card">
+            <div className="capability-icon">⚡</div>
+            <h3>AI Physics Solver</h3>
+            <p>
+              Break down challenging physics principles into digestible, concept-first explanations accompanied by exact mathematical solutions.
+            </p>
+            <ul className="capability-list">
+              <li><strong>Classical Mechanics:</strong> Newton's laws of motion, friction, momentum, energy conservation, and circular motion.</li>
+              <li><strong>Kinematics:</strong> 1D and 2D projectile motion, velocity vectors, acceleration graphs, and trajectories.</li>
+              <li><strong>Electromagnetism:</strong> Coulomb's law, electric fields, Gauss's law, capacitance, and magnetic flux.</li>
+              <li><strong>Thermodynamics & Waves:</strong> Heat engines, entropy, wave interference, Doppler effect, and optics.</li>
+            </ul>
+          </article>
+
+          <article className="capability-card">
+            <div className="capability-icon">📊</div>
+            <h3>AI Accounting Solver</h3>
+            <p>
+              Resolve complex corporate, managerial, and financial accounting problems with verified ledger equations and reporting formats.
+            </p>
+            <ul className="capability-list">
+              <li><strong>Financial Statements:</strong> Balance sheet formulation, income statements, and cash flow statement breakdowns.</li>
+              <li><strong>Bookkeeping:</strong> Debit and credit rules, double-entry journal entries, general ledger posting, and trial balance.</li>
+              <li><strong>Financial Analysis:</strong> Liquidity ratios, profitability margins, debt-to-equity metrics, and return on assets.</li>
+              <li><strong>Cost & Managerial:</strong> Break-even analysis, depreciation schedules (straight-line, declining), and variance analysis.</li>
+            </ul>
+          </article>
+
+          <article className="capability-card">
+            <div className="capability-icon">🧪</div>
+            <h3>AI Chemistry Solver</h3>
+            <p>
+              Solve quantitative and conceptual chemistry equations with precise molecular weights and step-by-step chemical principles.
+            </p>
+            <ul className="capability-list">
+              <li><strong>Equation Balancing:</strong> Automatic redox reaction balancing, combustion reactions, and precipitation equations.</li>
+              <li><strong>Stoichiometry:</strong> Limiting reagent calculation, percent yield, mole-to-gram conversions, and Avogadro calculations.</li>
+              <li><strong>Thermodynamics & Kinetics:</strong> Enthalpy change (ΔH), Gibbs free energy, Hess's law, and reaction rate laws.</li>
+              <li><strong>Solutions & Acid-Base:</strong> Molarity, molality, pH/pOH scales, Henderson-Hasselbalch equation, and buffer systems.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      {/* Crawlable FAQ Section for Search Engines & AI Overviews */}
+      <section className="faq-section" aria-label="Frequently Asked Questions">
+        <div className="section-header-block">
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about using GanitPeak as your AI tutor and homework assistant.</p>
+        </div>
+
+        <div className="faq-grid">
+          <div className="faq-item">
+            <h3>How does GanitPeak solve math, physics, accounting, and chemistry problems?</h3>
+            <p>
+              GanitPeak uses advanced mathematical AI models to analyze your query—whether typed in text, drawn on our interactive canvas, or uploaded as a photo. It identifies the underlying concepts, solves the problem step-by-step with clear LaTeX formula rendering, and explains every transition so you can learn the methodology.
+            </p>
+          </div>
+
+          <div className="faq-item">
+            <h3>Which academic subjects and topics does GanitPeak support?</h3>
+            <p>
+              GanitPeak supports all primary STEM and commerce subjects, specifically focused on <strong>Mathematics</strong> (Algebra, Calculus, Geometry, Trigonometry), <strong>Physics</strong> (Mechanics, Kinematics, Electromagnetism), <strong>Accounting</strong> (Balance Sheets, Journal Entries, Financial Ratios), and <strong>Chemistry</strong> (Stoichiometry, Equation Balancing, Acid-Base Solutions).
+            </p>
+          </div>
+
+          <div className="faq-item">
+            <h3>Can I upload photos or handwritten notes of problems?</h3>
+            <p>
+              Yes! You can take a picture of textbook exercises or handwritten notes and upload it directly. GanitPeak's built-in optical recognition scans the formulas, diagrams, or questions and immediately provides a structured solution.
+            </p>
+          </div>
+
+          <div className="faq-item">
+            <h3>Is GanitPeak free to use?</h3>
+            <p>
+              Yes, GanitPeak provides free, unlimited access to its AI problem solvers. Students can solve as many math, physics, accounting, and chemistry questions as they need without restrictive daily limits.
+            </p>
+          </div>
+
+          <div className="faq-item">
+            <h3>How do I copy formulas into Word, Overleaf, or assignments?</h3>
+            <p>
+              Every solution generated by GanitPeak includes a one-click <strong>"Copy Solution"</strong> button. This cleanly copies the entire explanation along with proper math equations and formatting directly to your clipboard.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Semantic Single-Row Footer */}
+      <footer className="landing-footer">
+        <div className="footer-container">
+          <div className="footer-left">
+            <span>GanitPeak — AI Math, Physics, Accounting & Chemistry Solver</span>
+          </div>
+          <div className="footer-right">
+            <span>© 2026 GanitPeak</span>
+            <span className="footer-dot">•</span>
+           {/* <a href="mailto:your-email@gmail.com" className="footer-contact-link">Contact</a> */}
+          </div>
+        </div>
+      </footer>
+
       <AuthModal
         isOpen={authModal.isOpen}
         onClose={closeAuthModal}
