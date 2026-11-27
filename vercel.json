@@ -31,6 +31,10 @@
       "dest": "frontend/manifest.json"
     },
     {
+      "src": "/sw.js",
+      "dest": "frontend/sw.js"
+    },
+    {
       "src": "/robots.txt",
       "dest": "frontend/robots.txt"
     },
