@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from './TranslationContext';
+import { Download } from 'lucide-react';
+import { usePWAInstall } from './usePWAInstall';
 import './LandingPage.css';
 import AuthModal from './AuthModal';
 import CanvasDrawing from './CanvasDrawing';
 
 function LandingPage({ onStartChat }) {
   const { t } = useTranslation();
+  const { isInstallable, promptInstall } = usePWAInstall();
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
   const [canvasModal, setCanvasModal] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -77,6 +80,14 @@ function LandingPage({ onStartChat }) {
             <span className="nav-logo-symbol">√</span>
             <span className="nav-logo-text">{t('GanitPeak')}</span>
           </div>
+          {isInstallable && (
+            <div className="nav-buttons">
+              <button className="nav-btn install-app-nav-btn" onClick={promptInstall}>
+                <Download size={16} />
+                <span>Install App</span>
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 

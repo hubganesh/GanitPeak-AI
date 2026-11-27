@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from './TranslationContext';
 import { useToast } from './ToastContext';
+import { usePWAInstall } from './usePWAInstall';
 import { BlockMath, InlineMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import './App.css';
@@ -39,12 +40,14 @@ import {
   Sun,
   Calculator as CalcIcon,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from 'lucide-react'; // Add MathInput CSS
 
 function App() {
   const { language, t, formatNumber, changeLanguage } = useTranslation();
   const toast = useToast();
+  const { isInstallable, promptInstall } = usePWAInstall();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -814,6 +817,16 @@ function App() {
                     <span className="menu-text">{t('theme')}</span>
                   </div>
                 </div>
+                {isInstallable && (
+                  <div
+                    className="menu-item"
+                    onClick={promptInstall}
+                    data-tooltip="Install App"
+                  >
+                    <span className="menu-icon"><Download size={20} /></span>
+                    <span className="menu-text">Install App</span>
+                  </div>
+                )}
 
                 <div className="sidebar-language-selector">
                   <div className="language-pill">

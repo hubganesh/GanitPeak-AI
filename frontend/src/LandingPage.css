@@ -433,6 +433,20 @@
   color: white;
 }
 
+.install-app-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.install-app-nav-btn:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  color: white;
+}
+
 .sign-up-btn:hover {
   background: #5a67d8;
 }
